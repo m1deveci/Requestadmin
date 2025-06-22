@@ -23,7 +23,16 @@ try {
     $stmt->execute([$companyId]);
     $locations = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    echo json_encode(['success' => true, 'locations' => $locations]);
+    $managerQuery = "SELECT id, first_name, last_name FROM users WHERE company_id = ? AND role IN ('hr', 'admin') AND status = 'active' ORDER BY first_name, last_name";
+    $managerStmt = $db->prepare($managerQuery);
+    $managerStmt->execute([$companyId]);
+    $managers = $managerStmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    echo json_encode([
+        'success' => true, 
+        'locations' => $locations,
+        'managers' => $managers
+    ]);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'Database error occurred']);
 }
