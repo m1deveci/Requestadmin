@@ -274,6 +274,22 @@ function getStatusText($status) {
     }
 }
 
+function logAdminAction($db, $userId, $action, $description) {
+    try {
+        $query = "INSERT INTO admin_logs (user_id, action, description, ip_address, user_agent, created_at) VALUES (?, ?, ?, ?, ?, NOW())";
+        $stmt = $db->prepare($query);
+        $stmt->execute([
+            $userId,
+            $action,
+            $description,
+            $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
+        ]);
+    } catch (Exception $e) {
+        error_log("Admin log error: " . $e->getMessage());
+    }
+}
+
 function getStatusBadgeClass($status) {
     $classes = [
         'pending' => 'bg-warning',

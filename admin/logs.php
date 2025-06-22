@@ -83,6 +83,39 @@ if ($logType === 'login') {
     $countStmt = $db->prepare($countQuery);
     $countStmt->execute($params);
     $totalLogs = $countStmt->fetchColumn();
+} elseif ($logType === 'admin') {
+    $whereConditions = [];
+    $params = [];
+    
+    if ($filterDate) {
+        $whereConditions[] = "DATE(al.created_at) = ?";
+        $params[] = $filterDate;
+    }
+    
+    $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
+    
+    try {
+        $query = "SELECT al.*, u.first_name, u.last_name, c.company_name
+                  FROM admin_logs al
+                  JOIN users u ON al.user_id = u.id
+                  LEFT JOIN companies c ON u.company_id = c.id
+                  $whereClause
+                  ORDER BY al.created_at DESC
+                  LIMIT $limit OFFSET $offset";
+        $stmt = $db->prepare($query);
+        $stmt->execute($params);
+        $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $countQuery = "SELECT COUNT(*) FROM admin_logs al
+                       JOIN users u ON al.user_id = u.id
+                       $whereClause";
+        $countStmt = $db->prepare($countQuery);
+        $countStmt->execute($params);
+        $totalLogs = $countStmt->fetchColumn();
+    } catch (Exception $e) {
+        $logs = [];
+        $totalLogs = 0;
+    }
 }
 
 $totalPages = ceil($totalLogs / $limit);
@@ -193,6 +226,11 @@ if ($logType === 'login') {
                             <i class="fas fa-tasks"></i> Talep Logları
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $logType === 'admin' ? 'active' : ''; ?>" href="?type=admin">
+                            <i class="fas fa-user-shield"></i> Admin İşlemleri
+                        </a>
+                    </li>
                 </ul>
 
                 <?php if ($logType === 'login' && !empty($stats)): ?>
@@ -261,7 +299,14 @@ if ($logType === 'login') {
                 <div class="card">
                     <div class="card-header">
                         <h5 class="mb-0">
-                            <?php echo $logType === 'login' ? 'Giriş Logları' : 'Talep Logları'; ?> 
+                            <?php 
+                            $titles = [
+                                'login' => 'Giriş Logları',
+                                'request' => 'Talep Logları',
+                                'admin' => 'Admin İşlem Logları'
+                            ];
+                            echo $titles[$logType] ?? 'Loglar'; 
+                            ?> 
                             (<?php echo $totalLogs; ?> kayıt)
                         </h5>
                     </div>
@@ -278,7 +323,7 @@ if ($logType === 'login') {
                                             <th>IP Adresi</th>
                                             <th>User Agent</th>
                                             <th>Durum</th>
-                                        <?php else: ?>
+                                        <?php elseif ($logType === 'request'): ?>
                                             <th>Tarih</th>
                                             <th>Talep No</th>
                                             <th>Talep Başlığı</th>
@@ -287,66 +332,102 @@ if ($logType === 'login') {
                                             <th>Eski Durum</th>
                                             <th>Yeni Durum</th>
                                             <th>Değiştiren</th>
+                                        <?php else: // admin ?>
+                                            <th>Tarih</th>
+                                            <th>Kullanıcı</th>
+                                            <th>Firma</th>
+                                            <th>İşlem</th>
+                                            <th>Açıklama</th>
+                                            <th>IP Adresi</th>
                                         <?php endif; ?>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($logs as $log): ?>
+                                    <?php if (empty($logs)): ?>
                                         <tr>
-                                            <?php if ($logType === 'login'): ?>
-                                                <td><?php echo formatDate($log['created_at']); ?></td>
-                                                <td>
-                                                    <?php if ($log['first_name']): ?>
-                                                        <?php echo htmlspecialchars($log['first_name'] . ' ' . $log['last_name']); ?>
-                                                    <?php else: ?>
-                                                        <span class="text-muted">Bilinmeyen</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td>
-                                                    <?php if ($log['company_name']): ?>
-                                                        <?php echo htmlspecialchars($log['company_name']); ?>
-                                                    <?php else: ?>
-                                                        <span class="text-muted">-</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td><?php echo htmlspecialchars($log['email']); ?></td>
-                                                <td><?php echo htmlspecialchars($log['ip_address']); ?></td>
-                                                <td>
-                                                    <span class="text-truncate" style="max-width: 200px;" title="<?php echo htmlspecialchars($log['user_agent']); ?>">
-                                                        <?php echo htmlspecialchars(substr($log['user_agent'], 0, 50)); ?>...
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-<?php echo $log['login_status'] === 'success' ? 'success' : 'danger'; ?>">
-                                                        <?php echo $log['login_status'] === 'success' ? 'Başarılı' : 'Başarısız'; ?>
-                                                    </span>
-                                                </td>
-                                            <?php else: ?>
-                                                <td><?php echo formatDate($log['created_at']); ?></td>
-                                                <td>
-                                                    <strong><?php echo htmlspecialchars($log['request_number']); ?></strong>
-                                                </td>
-                                                <td><?php echo htmlspecialchars($log['title']); ?></td>
-                                                <td>
-                                                    <?php echo htmlspecialchars($log['first_name'] . ' ' . $log['last_name']); ?>
-                                                </td>
-                                                <td><?php echo htmlspecialchars($log['company_name']); ?></td>
-                                                <td>
-                                                    <span class="badge bg-<?php echo getStatusBadgeColor($log['old_status']); ?>">
-                                                        <?php echo getStatusText($log['old_status']); ?>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-<?php echo getStatusBadgeColor($log['new_status']); ?>">
-                                                        <?php echo getStatusText($log['new_status']); ?>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <?php echo htmlspecialchars($log['changed_by_first_name'] . ' ' . $log['changed_by_last_name']); ?>
-                                                </td>
-                                            <?php endif; ?>
+                                            <td colspan="8" class="text-center text-muted py-4">
+                                                <?php if ($logType === 'admin'): ?>
+                                                    Admin işlem logları henüz mevcut değil. Veritabanı tablosu oluşturulduktan sonra loglar burada görünecektir.
+                                                <?php else: ?>
+                                                    Henüz log kaydı bulunmuyor.
+                                                <?php endif; ?>
+                                            </td>
                                         </tr>
-                                    <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <?php foreach ($logs as $log): ?>
+                                            <tr>
+                                                <?php if ($logType === 'login'): ?>
+                                                    <td><?php echo formatDate($log['created_at']); ?></td>
+                                                    <td>
+                                                        <?php if ($log['first_name']): ?>
+                                                            <?php echo htmlspecialchars($log['first_name'] . ' ' . $log['last_name']); ?>
+                                                        <?php else: ?>
+                                                            <span class="text-muted">Bilinmeyen</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td>
+                                                        <?php if ($log['company_name']): ?>
+                                                            <?php echo htmlspecialchars($log['company_name']); ?>
+                                                        <?php else: ?>
+                                                            <span class="text-muted">-</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td><?php echo htmlspecialchars($log['email']); ?></td>
+                                                    <td><?php echo htmlspecialchars($log['ip_address']); ?></td>
+                                                    <td>
+                                                        <span class="text-truncate" style="max-width: 200px;" title="<?php echo htmlspecialchars($log['user_agent']); ?>">
+                                                            <?php echo htmlspecialchars(substr($log['user_agent'], 0, 50)); ?>...
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-<?php echo $log['login_status'] === 'success' ? 'success' : 'danger'; ?>">
+                                                            <?php echo $log['login_status'] === 'success' ? 'Başarılı' : 'Başarısız'; ?>
+                                                        </span>
+                                                    </td>
+                                                <?php elseif ($logType === 'request'): ?>
+                                                    <td><?php echo formatDate($log['created_at']); ?></td>
+                                                    <td>
+                                                        <strong><?php echo htmlspecialchars($log['request_number']); ?></strong>
+                                                    </td>
+                                                    <td><?php echo htmlspecialchars($log['title']); ?></td>
+                                                    <td>
+                                                        <?php echo htmlspecialchars($log['first_name'] . ' ' . $log['last_name']); ?>
+                                                    </td>
+                                                    <td><?php echo htmlspecialchars($log['company_name']); ?></td>
+                                                    <td>
+                                                        <span class="badge bg-<?php echo getStatusBadgeColor($log['old_status']); ?>">
+                                                            <?php echo getStatusText($log['old_status']); ?>
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-<?php echo getStatusBadgeColor($log['new_status']); ?>">
+                                                            <?php echo getStatusText($log['new_status']); ?>
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <?php echo htmlspecialchars($log['changed_by_first_name'] . ' ' . $log['changed_by_last_name']); ?>
+                                                    </td>
+                                                <?php else: // admin ?>
+                                                    <td><?php echo formatDate($log['created_at']); ?></td>
+                                                    <td>
+                                                        <?php echo htmlspecialchars($log['first_name'] . ' ' . $log['last_name']); ?>
+                                                    </td>
+                                                    <td>
+                                                        <?php if ($log['company_name']): ?>
+                                                            <?php echo htmlspecialchars($log['company_name']); ?>
+                                                        <?php else: ?>
+                                                            <span class="text-muted">System Admin</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-info"><?php echo htmlspecialchars($log['action']); ?></span>
+                                                    </td>
+                                                    <td><?php echo htmlspecialchars($log['description']); ?></td>
+                                                    <td><?php echo htmlspecialchars($log['ip_address']); ?></td>
+                                                <?php endif; ?>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>

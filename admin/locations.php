@@ -19,9 +19,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $address = trim($_POST['address']);
             
             if (!empty($companyId) && !empty($locationName)) {
+                $query = "SELECT company_name FROM companies WHERE id = ?";
+                $stmt = $db->prepare($query);
+                $stmt->execute([$companyId]);
+                $companyName = $stmt->fetchColumn();
+                
                 $query = "INSERT INTO locations (company_id, location_name, address) VALUES (?, ?, ?)";
                 $stmt = $db->prepare($query);
                 if ($stmt->execute([$companyId, $locationName, $address])) {
+                    logAdminAction($db, $_SESSION['user_id'], 'location_added', "Lokasyon eklendi: {$locationName} - {$companyName}");
                     $message = 'Lokasyon başarıyla eklendi.';
                 } else {
                     $error = 'Lokasyon eklenirken bir hata oluştu.';
@@ -29,11 +35,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $error = 'Firma ve lokasyon adı gereklidir.';
             }
+        } elseif ($_POST['action'] === 'edit') {
+            $locationId = $_POST['location_id'];
+            $companyId = $_POST['company_id'];
+            $locationName = trim($_POST['location_name']);
+            $address = trim($_POST['address']);
+            
+            if (!empty($companyId) && !empty($locationName)) {
+                $query = "SELECT company_name FROM companies WHERE id = ?";
+                $stmt = $db->prepare($query);
+                $stmt->execute([$companyId]);
+                $companyName = $stmt->fetchColumn();
+                
+                $query = "UPDATE locations SET company_id = ?, location_name = ?, address = ? WHERE id = ?";
+                $stmt = $db->prepare($query);
+                if ($stmt->execute([$companyId, $locationName, $address, $locationId])) {
+                    logAdminAction($db, $_SESSION['user_id'], 'location_updated', "Lokasyon güncellendi: {$locationName} - {$companyName} (ID: $locationId)");
+                    $message = 'Lokasyon başarıyla güncellendi.';
+                } else {
+                    $error = 'Lokasyon güncellenirken bir hata oluştu.';
+                }
+            } else {
+                $error = 'Firma ve lokasyon adı gereklidir.';
+            }
         } elseif ($_POST['action'] === 'delete') {
             $locationId = $_POST['location_id'];
+            
+            $query = "SELECT l.location_name, c.company_name FROM locations l JOIN companies c ON l.company_id = c.id WHERE l.id = ?";
+            $stmt = $db->prepare($query);
+            $stmt->execute([$locationId]);
+            $locationInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+            
             $query = "DELETE FROM locations WHERE id = ?";
             $stmt = $db->prepare($query);
             if ($stmt->execute([$locationId])) {
+                if ($locationInfo) {
+                    logAdminAction($db, $_SESSION['user_id'], 'location_deleted', "Lokasyon silindi: {$locationInfo['location_name']} - {$locationInfo['company_name']} (ID: $locationId)");
+                }
                 $message = 'Lokasyon başarıyla silindi.';
             } else {
                 $error = 'Lokasyon silinirken bir hata oluştu.';
@@ -191,11 +229,17 @@ $companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                             </td>
                                             <td><?php echo formatDate($location['created_at']); ?></td>
                                             <td>
-                                                <button type="button" class="btn btn-sm btn-danger" 
-                                                        onclick="deleteLocation(<?php echo $location['id']; ?>, '<?php echo htmlspecialchars($location['location_name']); ?>')"
-                                                        <?php echo $location['user_count'] > 0 ? 'disabled title="Bu lokasyonda kullanıcı bulunduğu için silinemez"' : ''; ?>>
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="button" class="btn btn-outline-warning" 
+                                                            data-bs-toggle="modal" data-bs-target="#editLocationModal<?php echo $location['id']; ?>">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-danger" 
+                                                            onclick="deleteLocation(<?php echo $location['id']; ?>, '<?php echo htmlspecialchars($location['location_name']); ?>')"
+                                                            <?php echo $location['user_count'] > 0 ? 'disabled title="Bu lokasyonda kullanıcı bulunduğu için silinemez"' : ''; ?>>
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -251,6 +295,55 @@ $companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
+    <!-- Edit Location Modals -->
+    <?php foreach ($locations as $location): ?>
+        <div class="modal fade" id="editLocationModal<?php echo $location['id']; ?>" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Lokasyon Düzenle</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="POST">
+                        <div class="modal-body">
+                            <input type="hidden" name="action" value="edit">
+                            <input type="hidden" name="location_id" value="<?php echo $location['id']; ?>">
+                            
+                            <div class="mb-3">
+                                <label for="edit_company_id<?php echo $location['id']; ?>" class="form-label">Firma</label>
+                                <select class="form-select" id="edit_company_id<?php echo $location['id']; ?>" name="company_id" required>
+                                    <option value="">Firma Seçin</option>
+                                    <?php foreach ($companies as $company): ?>
+                                        <option value="<?php echo $company['id']; ?>" 
+                                                <?php echo $company['id'] == $location['company_id'] ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($company['company_name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="edit_location_name<?php echo $location['id']; ?>" class="form-label">Lokasyon Adı</label>
+                                <input type="text" class="form-control" id="edit_location_name<?php echo $location['id']; ?>" 
+                                       name="location_name" value="<?php echo htmlspecialchars($location['location_name']); ?>" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="edit_address<?php echo $location['id']; ?>" class="form-label">Adres</label>
+                                <textarea class="form-control" id="edit_address<?php echo $location['id']; ?>" 
+                                          name="address" rows="3"><?php echo htmlspecialchars($location['address'] ?? ''); ?></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                            <button type="submit" class="btn btn-primary">Güncelle</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    <?php endforeach; ?>
+
     <!-- Delete Form -->
     <form id="deleteForm" method="POST" style="display: none;">
         <input type="hidden" name="action" value="delete">
@@ -260,7 +353,7 @@ $companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function deleteLocation(id, name) {
-            if (confirm('Bu lokasyonu silmek istediğinizden emin misiniz?\n\nLokasyon: ' + name)) {
+            if (confirm('Bu lokasyonu silmek istediğinizden emin misiniz?\n\nLokasyon: ' + name + '\n\nDikkat: Bu işlem geri alınamaz!')) {
                 document.getElementById('deleteLocationId').value = id;
                 document.getElementById('deleteForm').submit();
             }
