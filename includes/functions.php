@@ -202,6 +202,78 @@ function formatDate($date) {
     return date('d.m.Y H:i', strtotime($date));
 }
 
+function getRoleBadgeColor($role) {
+    switch ($role) {
+        case 'admin':
+            return 'danger';
+        case 'hr':
+            return 'warning';
+        case 'employee':
+            return 'info';
+        default:
+            return 'secondary';
+    }
+}
+
+function getRoleText($role) {
+    switch ($role) {
+        case 'admin':
+            return 'Admin';
+        case 'hr':
+            return 'İdari İşler';
+        case 'employee':
+            return 'Çalışan';
+        default:
+            return 'Bilinmeyen';
+    }
+}
+
+function getStatusBadgeColor($status) {
+    switch ($status) {
+        case 'pending':
+            return 'warning';
+        case 'assigned':
+            return 'info';
+        case 'in_progress':
+            return 'primary';
+        case 'completed':
+            return 'success';
+        case 'cancelled':
+            return 'danger';
+        case 'waiting_manager_approval':
+            return 'secondary';
+        case 'manager_approved':
+            return 'success';
+        case 'manager_rejected':
+            return 'danger';
+        default:
+            return 'secondary';
+    }
+}
+
+function getStatusText($status) {
+    switch ($status) {
+        case 'pending':
+            return 'Bekleyen';
+        case 'assigned':
+            return 'Atanmış';
+        case 'in_progress':
+            return 'İşlemde';
+        case 'completed':
+            return 'Tamamlandı';
+        case 'cancelled':
+            return 'İptal Edildi';
+        case 'waiting_manager_approval':
+            return 'Yönetici Onayı Bekliyor';
+        case 'manager_approved':
+            return 'Yönetici Onayladı';
+        case 'manager_rejected':
+            return 'Yönetici Reddetti';
+        default:
+            return 'Bilinmeyen';
+    }
+}
+
 function getStatusBadgeClass($status) {
     $classes = [
         'pending' => 'bg-warning',
