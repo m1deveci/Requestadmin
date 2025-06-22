@@ -305,20 +305,7 @@ function getStatusBadgeClass($status) {
     return $classes[$status] ?? 'bg-secondary';
 }
 
-function getStatusText($status) {
-    $texts = [
-        'pending' => 'Beklemede',
-        'assigned' => 'Atandı',
-        'in_progress' => 'İşlemde',
-        'manager_approval' => 'Yönetici Onayı',
-        'approved' => 'Onaylandı',
-        'rejected' => 'Reddedildi',
-        'completed' => 'Tamamlandı',
-        'cancelled' => 'İptal Edildi'
-    ];
-    
-    return $texts[$status] ?? $status;
-}
+
 
 function getPriorityBadgeClass($priority) {
     $classes = [
