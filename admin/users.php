@@ -57,6 +57,101 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $error = 'Durum güncellenirken bir hata oluştu.';
             }
+        } elseif ($_POST['action'] === 'edit') {
+            $userId = $_POST['user_id'];
+            $companyId = $_POST['company_id'];
+            $locationId = $_POST['location_id'] ?: null;
+            $firstName = trim($_POST['first_name']);
+            $lastName = trim($_POST['last_name']);
+            $email = trim($_POST['email']);
+            $role = $_POST['role'];
+            $title = trim($_POST['title']) ?: null;
+            $department = trim($_POST['department']) ?: null;
+            $managerId = $_POST['manager_id'] ?: null;
+            
+            if (!empty($companyId) && !empty($firstName) && !empty($lastName) && !empty($email) && !empty($role)) {
+                $checkQuery = "SELECT id FROM users WHERE email = ? AND id != ?";
+                $checkStmt = $db->prepare($checkQuery);
+                $checkStmt->execute([$email, $userId]);
+                
+                if ($checkStmt->fetch()) {
+                    $error = 'Bu e-posta adresi başka bir kullanıcı tarafından kullanılıyor.';
+                } else {
+                    $userQuery = "SELECT u.first_name, u.last_name, c.company_name FROM users u JOIN companies c ON u.company_id = c.id WHERE u.id = ?";
+                    $userStmt = $db->prepare($userQuery);
+                    $userStmt->execute([$userId]);
+                    $userInfo = $userStmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    $query = "UPDATE users SET company_id = ?, location_id = ?, first_name = ?, last_name = ?, email = ?, role = ?, title = ?, department = ?, manager_id = ? WHERE id = ?";
+                    $stmt = $db->prepare($query);
+                    if ($stmt->execute([$companyId, $locationId, $firstName, $lastName, $email, $role, $title, $department, $managerId, $userId])) {
+                        if ($userInfo) {
+                            logAdminAction($db, $_SESSION['user_id'], 'user_updated', "Kullanıcı güncellendi: {$firstName} {$lastName} ({$email}) (ID: $userId)");
+                        }
+                        $message = 'Kullanıcı başarıyla güncellendi.';
+                    } else {
+                        $error = 'Kullanıcı güncellenirken bir hata oluştu.';
+                    }
+                }
+            } else {
+                $error = 'Tüm zorunlu alanları doldurun.';
+            }
+        } elseif ($_POST['action'] === 'delete') {
+            $userId = $_POST['user_id'];
+            
+            $userQuery = "SELECT u.first_name, u.last_name, u.email, c.company_name FROM users u JOIN companies c ON u.company_id = c.id WHERE u.id = ?";
+            $userStmt = $db->prepare($userQuery);
+            $userStmt->execute([$userId]);
+            $userInfo = $userStmt->fetch(PDO::FETCH_ASSOC);
+            
+            $requestQuery = "SELECT COUNT(*) as count FROM requests WHERE user_id = ? AND status NOT IN ('completed', 'cancelled')";
+            $requestStmt = $db->prepare($requestQuery);
+            $requestStmt->execute([$userId]);
+            $requestCount = $requestStmt->fetch(PDO::FETCH_ASSOC)['count'];
+            
+            if ($requestCount > 0) {
+                $error = 'Bu kullanıcının aktif talepleri bulunduğu için silinemez.';
+            } else {
+                $query = "DELETE FROM users WHERE id = ?";
+                $stmt = $db->prepare($query);
+                if ($stmt->execute([$userId])) {
+                    if ($userInfo) {
+                        logAdminAction($db, $_SESSION['user_id'], 'user_deleted', "Kullanıcı silindi: {$userInfo['first_name']} {$userInfo['last_name']} ({$userInfo['email']}) (ID: $userId)");
+                    }
+                    $message = 'Kullanıcı başarıyla silindi.';
+                } else {
+                    $error = 'Kullanıcı silinirken bir hata oluştu.';
+                }
+            }
+        } elseif ($_POST['action'] === 'reset_password') {
+            $userId = $_POST['user_id'];
+            $newPassword = $_POST['new_password'] ?? '';
+            $generateRandom = isset($_POST['generate_random']);
+            
+            if ($generateRandom) {
+                $newPassword = bin2hex(random_bytes(8));
+            }
+            
+            if (!empty($newPassword)) {
+                $userQuery = "SELECT u.first_name, u.last_name, u.email, c.company_name FROM users u JOIN companies c ON u.company_id = c.id WHERE u.id = ?";
+                $userStmt = $db->prepare($userQuery);
+                $userStmt->execute([$userId]);
+                $userInfo = $userStmt->fetch(PDO::FETCH_ASSOC);
+                
+                $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+                $query = "UPDATE users SET password = ? WHERE id = ?";
+                $stmt = $db->prepare($query);
+                if ($stmt->execute([$hashedPassword, $userId])) {
+                    if ($userInfo) {
+                        logAdminAction($db, $_SESSION['user_id'], 'user_password_reset', "Kullanıcı parolası sıfırlandı: {$userInfo['first_name']} {$userInfo['last_name']} ({$userInfo['email']}) (ID: $userId)");
+                    }
+                    $message = $generateRandom ? "Kullanıcı parolası sıfırlandı. Yeni parola: $newPassword" : 'Kullanıcı parolası başarıyla güncellendi.';
+                } else {
+                    $error = 'Parola güncellenirken bir hata oluştu.';
+                }
+            } else {
+                $error = 'Yeni parola gereklidir.';
+            }
         }
     }
 }
@@ -83,7 +178,8 @@ if ($filterStatus) {
 
 $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
 
-$query = "SELECT u.*, c.company_name, l.location_name, m.first_name as manager_first_name, m.last_name as manager_last_name
+$query = "SELECT u.*, c.company_name, l.location_name, m.first_name as manager_first_name, m.last_name as manager_last_name,
+          (SELECT COUNT(*) FROM requests r WHERE r.user_id = u.id AND r.status NOT IN ('completed', 'cancelled')) as request_count
           FROM users u 
           JOIN companies c ON u.company_id = c.id 
           LEFT JOIN locations l ON u.location_id = l.id
@@ -283,10 +379,25 @@ $companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                             </td>
                                             <td><?php echo $user['last_login'] ? formatDate($user['last_login']) : 'Hiç'; ?></td>
                                             <td>
-                                                <button type="button" class="btn btn-sm btn-<?php echo $user['status'] === 'active' ? 'warning' : 'success'; ?>" 
-                                                        onclick="toggleUserStatus(<?php echo $user['id']; ?>, '<?php echo $user['status']; ?>')">
-                                                    <i class="fas fa-<?php echo $user['status'] === 'active' ? 'pause' : 'play'; ?>"></i>
-                                                </button>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="button" class="btn btn-outline-primary" 
+                                                            data-bs-toggle="modal" data-bs-target="#editUserModal<?php echo $user['id']; ?>">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-warning" 
+                                                            onclick="resetUserPassword(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>')">
+                                                        <i class="fas fa-key"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-danger" 
+                                                            onclick="deleteUser(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>')"
+                                                            <?php echo $user['request_count'] > 0 ? 'disabled title="Bu kullanıcının aktif talepleri bulunduğu için silinemez"' : ''; ?>>
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-<?php echo $user['status'] === 'active' ? 'warning' : 'success'; ?>" 
+                                                            onclick="toggleUserStatus(<?php echo $user['id']; ?>, '<?php echo $user['status']; ?>')">
+                                                        <i class="fas fa-<?php echo $user['status'] === 'active' ? 'pause' : 'play'; ?>"></i>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -411,6 +522,161 @@ $companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
+    <!-- Edit User Modals -->
+    <?php foreach ($users as $user): ?>
+        <div class="modal fade" id="editUserModal<?php echo $user['id']; ?>" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Kullanıcı Düzenle</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="POST">
+                        <div class="modal-body">
+                            <input type="hidden" name="action" value="edit">
+                            <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="edit_company_id<?php echo $user['id']; ?>" class="form-label">Firma</label>
+                                        <select class="form-select" id="edit_company_id<?php echo $user['id']; ?>" name="company_id" required onchange="loadEditLocations(this.value, <?php echo $user['id']; ?>)">
+                                            <option value="">Firma Seçin</option>
+                                            <?php foreach ($companies as $company): ?>
+                                                <option value="<?php echo $company['id']; ?>" <?php echo $company['id'] == $user['company_id'] ? 'selected' : ''; ?>>
+                                                    <?php echo htmlspecialchars($company['company_name']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="edit_location_id<?php echo $user['id']; ?>" class="form-label">Lokasyon</label>
+                                        <select class="form-select" id="edit_location_id<?php echo $user['id']; ?>" name="location_id">
+                                            <option value="">Lokasyon Seçin (İsteğe Bağlı)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="edit_first_name<?php echo $user['id']; ?>" class="form-label">Ad</label>
+                                        <input type="text" class="form-control" id="edit_first_name<?php echo $user['id']; ?>" name="first_name" value="<?php echo htmlspecialchars($user['first_name']); ?>" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="edit_last_name<?php echo $user['id']; ?>" class="form-label">Soyad</label>
+                                        <input type="text" class="form-control" id="edit_last_name<?php echo $user['id']; ?>" name="last_name" value="<?php echo htmlspecialchars($user['last_name']); ?>" required>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="edit_email<?php echo $user['id']; ?>" class="form-label">E-posta</label>
+                                        <input type="email" class="form-control" id="edit_email<?php echo $user['id']; ?>" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="edit_role<?php echo $user['id']; ?>" class="form-label">Rol</label>
+                                        <select class="form-select" id="edit_role<?php echo $user['id']; ?>" name="role" required>
+                                            <option value="">Rol Seçin</option>
+                                            <option value="admin" <?php echo $user['role'] === 'admin' ? 'selected' : ''; ?>>Admin</option>
+                                            <option value="hr" <?php echo $user['role'] === 'hr' ? 'selected' : ''; ?>>İdari İşler</option>
+                                            <option value="employee" <?php echo $user['role'] === 'employee' ? 'selected' : ''; ?>>Çalışan</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="edit_title<?php echo $user['id']; ?>" class="form-label">Ünvan</label>
+                                        <input type="text" class="form-control" id="edit_title<?php echo $user['id']; ?>" name="title" value="<?php echo htmlspecialchars($user['title'] ?? ''); ?>">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="edit_department<?php echo $user['id']; ?>" class="form-label">Departman</label>
+                                        <input type="text" class="form-control" id="edit_department<?php echo $user['id']; ?>" name="department" value="<?php echo htmlspecialchars($user['department'] ?? ''); ?>">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="edit_manager_id<?php echo $user['id']; ?>" class="form-label">Yönetici</label>
+                                        <select class="form-select" id="edit_manager_id<?php echo $user['id']; ?>" name="manager_id">
+                                            <option value="">Yönetici Seçin (İsteğe Bağlı)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                            <button type="submit" class="btn btn-primary">Güncelle</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    <?php endforeach; ?>
+
+    <!-- Password Reset Modal -->
+    <div class="modal fade" id="passwordResetModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Parola Sıfırla</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST">
+                    <div class="modal-body">
+                        <input type="hidden" name="action" value="reset_password">
+                        <input type="hidden" name="user_id" id="resetUserId">
+                        
+                        <div class="mb-3">
+                            <p>Kullanıcı: <strong id="resetUserName"></strong></p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="generateRandom" name="generate_random" onchange="togglePasswordInput()">
+                                <label class="form-check-label" for="generateRandom">
+                                    Rastgele parola oluştur
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3" id="passwordInputDiv">
+                            <label for="newPassword" class="form-label">Yeni Parola</label>
+                            <input type="password" class="form-control" id="newPassword" name="new_password" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                        <button type="submit" class="btn btn-warning">Parolayı Sıfırla</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Form -->
+    <form id="deleteUserForm" method="POST" style="display: none;">
+        <input type="hidden" name="action" value="delete">
+        <input type="hidden" name="user_id" id="deleteUserId">
+    </form>
+
     <!-- Status Toggle Form -->
     <form id="statusForm" method="POST" style="display: none;">
         <input type="hidden" name="action" value="toggle_status">
@@ -459,6 +725,78 @@ $companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     locationSelect.innerHTML = '<option value="">Hata oluştu</option>';
                 });
         }
+        
+        function loadEditLocations(companyId, userId) {
+            const locationSelect = document.getElementById('edit_location_id' + userId);
+            const managerSelect = document.getElementById('edit_manager_id' + userId);
+            
+            locationSelect.innerHTML = '<option value="">Yükleniyor...</option>';
+            managerSelect.innerHTML = '<option value="">Yönetici Seçin (İsteğe Bağlı)</option>';
+            
+            if (!companyId) {
+                locationSelect.innerHTML = '<option value="">Önce firma seçin</option>';
+                return;
+            }
+            
+            fetch('ajax/get_locations.php?company_id=' + companyId)
+                .then(response => response.json())
+                .then(data => {
+                    locationSelect.innerHTML = '<option value="">Lokasyon Seçin (İsteğe Bağlı)</option>';
+                    data.locations.forEach(location => {
+                        locationSelect.innerHTML += `<option value="${location.id}">${location.location_name}</option>`;
+                    });
+                    
+                    data.managers.forEach(manager => {
+                        managerSelect.innerHTML += `<option value="${manager.id}">${manager.first_name} ${manager.last_name}</option>`;
+                    });
+                })
+                .catch(error => {
+                    locationSelect.innerHTML = '<option value="">Hata oluştu</option>';
+                });
+        }
+        
+        function deleteUser(id, name) {
+            if (confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?\n\nKullanıcı: ' + name + '\n\nDikkat: Bu işlem geri alınamaz!')) {
+                document.getElementById('deleteUserId').value = id;
+                document.getElementById('deleteUserForm').submit();
+            }
+        }
+        
+        function resetUserPassword(id, name) {
+            document.getElementById('resetUserId').value = id;
+            document.getElementById('resetUserName').textContent = name;
+            document.getElementById('generateRandom').checked = false;
+            document.getElementById('newPassword').value = '';
+            document.getElementById('passwordInputDiv').style.display = 'block';
+            document.getElementById('newPassword').required = true;
+            
+            const modal = new bootstrap.Modal(document.getElementById('passwordResetModal'));
+            modal.show();
+        }
+        
+        function togglePasswordInput() {
+            const checkbox = document.getElementById('generateRandom');
+            const passwordDiv = document.getElementById('passwordInputDiv');
+            const passwordInput = document.getElementById('newPassword');
+            
+            if (checkbox.checked) {
+                passwordDiv.style.display = 'none';
+                passwordInput.required = false;
+                passwordInput.value = '';
+            } else {
+                passwordDiv.style.display = 'block';
+                passwordInput.required = true;
+            }
+        }
+        
+        <?php foreach ($users as $user): ?>
+        document.addEventListener('DOMContentLoaded', function() {
+            const editModal<?php echo $user['id']; ?> = document.getElementById('editUserModal<?php echo $user['id']; ?>');
+            editModal<?php echo $user['id']; ?>.addEventListener('shown.bs.modal', function() {
+                loadEditLocations(<?php echo $user['company_id']; ?>, <?php echo $user['id']; ?>);
+            });
+        });
+        <?php endforeach; ?>
     </script>
 </body>
 </html>
