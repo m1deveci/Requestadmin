@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userStmt->execute([$userId]);
             $userInfo = $userStmt->fetch(PDO::FETCH_ASSOC);
             
-            $requestQuery = "SELECT COUNT(*) as count FROM requests WHERE user_id = ? AND status NOT IN ('completed', 'cancelled')";
+            $requestQuery = "SELECT COUNT(*) as count FROM requests WHERE employee_id = ? AND status NOT IN ('completed', 'cancelled')";
             $requestStmt = $db->prepare($requestQuery);
             $requestStmt->execute([$userId]);
             $requestCount = $requestStmt->fetch(PDO::FETCH_ASSOC)['count'];
@@ -179,7 +179,7 @@ if ($filterStatus) {
 $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
 
 $query = "SELECT u.*, c.company_name, l.location_name, m.first_name as manager_first_name, m.last_name as manager_last_name,
-          (SELECT COUNT(*) FROM requests r WHERE r.user_id = u.id AND r.status NOT IN ('completed', 'cancelled')) as request_count
+          (SELECT COUNT(*) FROM requests r WHERE r.employee_id = u.id AND r.status NOT IN ('completed', 'cancelled')) as request_count
           FROM users u 
           JOIN companies c ON u.company_id = c.id 
           LEFT JOIN locations l ON u.location_id = l.id
