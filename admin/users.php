@@ -386,7 +386,7 @@ $provinces = $provincesStmt->fetchAll(PDO::FETCH_ASSOC);
                                                 <td><?php echo htmlspecialchars($user['department'] ?? '-'); ?></td>
                                                 <td><?php echo htmlspecialchars($user['manager_name'] ?? '-'); ?></td>
                                                 <td>
-                                                    <?php if ($user['is_active']): ?>
+                                                    <?php if ($user['status'] == 'active'): ?>
                                                         <span class="badge bg-success">Aktif</span>
                                                     <?php else: ?>
                                                         <span class="badge bg-secondary">Pasif</span>

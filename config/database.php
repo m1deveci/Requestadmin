@@ -1,4 +1,4 @@
-<?php
+için <?php
 class Database {
     private $host = 'localhost';
     private $db_name = 'requestadmin';
@@ -22,7 +22,7 @@ class Database {
 function initializeDatabase() {
     $database = new Database();
     $db = $database->getConnection();
-    
+
     $query = "CREATE TABLE IF NOT EXISTS companies (
         id INT AUTO_INCREMENT PRIMARY KEY,
         company_name VARCHAR(255) NOT NULL COLLATE utf8_turkish_ci,
@@ -38,7 +38,7 @@ function initializeDatabase() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) COLLATE utf8_turkish_ci";
     $db->exec($query);
-    
+
     $query = "CREATE TABLE IF NOT EXISTS provinces (
         id INT AUTO_INCREMENT PRIMARY KEY,
         province_name VARCHAR(100) NOT NULL COLLATE utf8_turkish_ci,
@@ -46,7 +46,7 @@ function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) COLLATE utf8_turkish_ci";
     $db->exec($query);
-    
+
     $query = "CREATE TABLE IF NOT EXISTS locations (
         id INT AUTO_INCREMENT PRIMARY KEY,
         company_id INT NOT NULL,
@@ -58,7 +58,7 @@ function initializeDatabase() {
         FOREIGN KEY (province_id) REFERENCES provinces(id) ON DELETE SET NULL
     ) COLLATE utf8_turkish_ci";
     $db->exec($query);
-    
+
     $query = "CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
         company_id INT NOT NULL,
@@ -85,7 +85,7 @@ function initializeDatabase() {
         FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL
     ) COLLATE utf8_turkish_ci";
     $db->exec($query);
-    
+
     $query = "CREATE TABLE IF NOT EXISTS request_categories (
         id INT AUTO_INCREMENT PRIMARY KEY,
         category_name VARCHAR(255) NOT NULL COLLATE utf8_turkish_ci,
@@ -93,7 +93,7 @@ function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) COLLATE utf8_turkish_ci";
     $db->exec($query);
-    
+
     $query = "CREATE TABLE IF NOT EXISTS requests (
         id INT AUTO_INCREMENT PRIMARY KEY,
         request_number VARCHAR(50) NOT NULL UNIQUE,
@@ -116,7 +116,7 @@ function initializeDatabase() {
         FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL
     ) COLLATE utf8_turkish_ci";
     $db->exec($query);
-    
+
     $query = "CREATE TABLE IF NOT EXISTS request_status_history (
         id INT AUTO_INCREMENT PRIMARY KEY,
         request_id INT NOT NULL,
@@ -130,6 +130,18 @@ function initializeDatabase() {
     ) COLLATE utf8_turkish_ci";
     $db->exec($query);
     
+    $query = "CREATE TABLE IF NOT EXISTS admin_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        action VARCHAR(100) NOT NULL,
+        description TEXT NOT NULL COLLATE utf8_turkish_ci,
+        ip_address VARCHAR(45) NOT NULL,
+        user_agent TEXT COLLATE utf8_turkish_ci,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) COLLATE utf8_turkish_ci";
+    $db->exec($query);
+
     $query = "CREATE TABLE IF NOT EXISTS login_logs (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT,
@@ -143,7 +155,7 @@ function initializeDatabase() {
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
     ) COLLATE utf8_turkish_ci";
     $db->exec($query);
-    
+
     $query = "CREATE TABLE IF NOT EXISTS blocked_access (
         id INT AUTO_INCREMENT PRIMARY KEY,
         ip_address VARCHAR(45),
@@ -153,7 +165,7 @@ function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) COLLATE utf8_turkish_ci";
     $db->exec($query);
-    
+
     $query = "CREATE TABLE IF NOT EXISTS system_settings (
         id INT AUTO_INCREMENT PRIMARY KEY,
         setting_key VARCHAR(255) NOT NULL UNIQUE,
@@ -162,7 +174,7 @@ function initializeDatabase() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) COLLATE utf8_turkish_ci";
     $db->exec($query);
-    
+
     $provinces = [
         ['Adana', '01'], ['Adıyaman', '02'], ['Afyonkarahisar', '03'], ['Ağrı', '04'], ['Amasya', '05'],
         ['Ankara', '06'], ['Antalya', '07'], ['Artvin', '08'], ['Aydın', '09'], ['Balıkesir', '10'],
@@ -181,12 +193,12 @@ function initializeDatabase() {
         ['Kırıkkale', '71'], ['Batman', '72'], ['Şırnak', '73'], ['Bartın', '74'], ['Ardahan', '75'],
         ['Iğdır', '76'], ['Yalova', '77'], ['Karabük', '78'], ['Kilis', '79'], ['Osmaniye', '80'], ['Düzce', '81']
     ];
-    
+
     $stmt = $db->prepare("INSERT IGNORE INTO provinces (province_name, province_code) VALUES (?, ?)");
     foreach ($provinces as $province) {
         $stmt->execute($province);
     }
-    
+
     $categories = [
         ['Ofis Eşyası', false],
         ['Tamirat', true],
@@ -196,44 +208,44 @@ function initializeDatabase() {
         ['Temizlik', false],
         ['Güvenlik', true]
     ];
-    
+
     $stmt = $db->prepare("INSERT IGNORE INTO request_categories (category_name, requires_manager_approval) VALUES (?, ?)");
     foreach ($categories as $category) {
         $stmt->execute($category);
     }
-    
+
     $stmt = $db->prepare("INSERT IGNORE INTO companies (company_name, phone, authorized_person, tax_number, address, email, password, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute(['System Company', '000-000-0000', 'System Admin', '0000000000', 'System Address', 'system@company.com', password_hash('system123', PASSWORD_DEFAULT), 'approved']);
-    
+
     $companyQuery = $db->query("SELECT id FROM companies WHERE email = 'system@company.com' LIMIT 1");
     $company = $companyQuery->fetch(PDO::FETCH_ASSOC);
     $companyId = $company ? $company['id'] : 1;
-    
+
     $istanbulQuery = $db->prepare("SELECT id FROM provinces WHERE province_name = 'İstanbul' LIMIT 1");
     $istanbulQuery->execute();
     $istanbul = $istanbulQuery->fetch(PDO::FETCH_ASSOC);
     $istanbulId = $istanbul ? $istanbul['id'] : 1;
-    
+
     $stmt = $db->prepare("INSERT IGNORE INTO locations (company_id, location_name, address, province_id) VALUES (?, ?, ?, ?)");
     $stmt->execute([$companyId, 'Main Office', 'Main Office Address', $istanbulId]);
-    
+
     $locationQuery = $db->prepare("SELECT id FROM locations WHERE company_id = ? LIMIT 1");
     $locationQuery->execute([$companyId]);
     $location = $locationQuery->fetch(PDO::FETCH_ASSOC);
     $locationId = $location ? $location['id'] : null;
-    
+
     $admin_password = password_hash('admin123', PASSWORD_DEFAULT);
     $stmt = $db->prepare("INSERT IGNORE INTO users (company_id, location_id, province_id, first_name, last_name, email, password, role) VALUES (?, ?, ?, 'System', 'Admin', 'admin@system.com', ?, 'admin')");
     $stmt->execute([$companyId, $locationId, $istanbulId, $admin_password]);
-    
+
     $hr_password = password_hash('hr123', PASSWORD_DEFAULT);
     $stmt = $db->prepare("INSERT IGNORE INTO users (company_id, location_id, province_id, first_name, last_name, email, password, role, title, department) VALUES (?, ?, ?, 'HR', 'Manager', 'hr@test.com', ?, 'hr', 'HR Manager', 'Human Resources')");
     $stmt->execute([$companyId, $locationId, $istanbulId, $hr_password]);
-    
+
     $emp_password = password_hash('emp123', PASSWORD_DEFAULT);
     $stmt = $db->prepare("INSERT IGNORE INTO users (company_id, location_id, province_id, first_name, last_name, email, password, role, title, department) VALUES (?, ?, ?, 'Test', 'Employee', 'employee@test.com', ?, 'employee', 'Employee', 'General')");
     $stmt->execute([$companyId, $locationId, $istanbulId, $emp_password]);
-    
+
     $settings = [
         ['site_title', 'Request Admin - İdari İşler Talep Yönetim Sistemi'],
         ['smtp_host', ''],
@@ -244,7 +256,7 @@ function initializeDatabase() {
         ['max_login_attempts', '3'],
         ['lockout_duration', '30']
     ];
-    
+
     $stmt = $db->prepare("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)");
     foreach ($settings as $setting) {
         $stmt->execute($setting);
