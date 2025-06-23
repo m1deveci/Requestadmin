@@ -61,14 +61,6 @@ $recent_activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <body>
     <div class="container-fluid">
         <div class="row">
-            <!-- Hamburger Menu Button -->
-            <button class="hamburger-menu" id="hamburgerMenu">
-                <i class="fas fa-bars"></i>
-            </button>
-
-            <!-- Sidebar Overlay -->
-            <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
             <!-- Sidebar -->
             <?php 
             require_once '../includes/sidebar.php';
@@ -201,45 +193,5 @@ $recent_activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const hamburgerMenu = document.getElementById('hamburgerMenu');
-            const sidebar = document.getElementById('sidebar');
-            const sidebarOverlay = document.getElementById('sidebarOverlay');
-            
-            function toggleSidebar() {
-                sidebar.classList.toggle('show');
-                sidebarOverlay.classList.toggle('show');
-            }
-            
-            function closeSidebar() {
-                sidebar.classList.remove('show');
-                sidebarOverlay.classList.remove('show');
-            }
-            
-            if (hamburgerMenu) {
-                hamburgerMenu.addEventListener('click', toggleSidebar);
-            }
-            
-            if (sidebarOverlay) {
-                sidebarOverlay.addEventListener('click', closeSidebar);
-            }
-            
-            const navLinks = sidebar.querySelectorAll('.nav-link');
-            navLinks.forEach(link => {
-                link.addEventListener('click', function() {
-                    if (window.innerWidth <= 768) {
-                        closeSidebar();
-                    }
-                });
-            });
-            
-            window.addEventListener('resize', function() {
-                if (window.innerWidth > 768) {
-                    closeSidebar();
-                }
-            });
-        });
-    </script>
 </body>
 </html>
