@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                     $stmt = $db->prepare($query);
                     if ($stmt->execute([$companyId, $locationId, $provinceId, $firstName, $lastName, $email, $hashedPassword, $role, $title, $department, $managerId])) {
-                        logAdminAction($_SESSION['user_id'], 'CREATE_USER', "Yeni kullanıcı eklendi: $firstName $lastName ($email)");
+                        logAdminAction($db, $_SESSION['user_id'], 'CREATE_USER', "Yeni kullanıcı eklendi: $firstName $lastName ($email)");
                         $message = 'Kullanıcı başarıyla eklendi.';
                     } else {
                         $error = 'Kullanıcı eklenirken bir hata oluştu.';
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt = $db->prepare($query);
                     if ($stmt->execute([$companyId, $locationId, $provinceId, $firstName, $lastName, $email, $role, $title, $department, $managerId, $userId])) {
                         if ($userInfo) {
-                            logAdminAction($_SESSION['user_id'], 'UPDATE_USER', "Kullanıcı güncellendi: {$userInfo['first_name']} {$userInfo['last_name']} -> $firstName $lastName");
+                            logAdminAction($db, $_SESSION['user_id'], 'UPDATE_USER', "Kullanıcı güncellendi: {$userInfo['first_name']} {$userInfo['last_name']} -> $firstName $lastName");
                         }
                         $message = 'Kullanıcı başarıyla güncellendi.';
                     } else {
@@ -105,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $db->prepare($query);
                 if ($stmt->execute([$userId])) {
                     if ($userInfo) {
-                        logAdminAction($_SESSION['user_id'], 'DELETE_USER', "Kullanıcı silindi: {$userInfo['first_name']} {$userInfo['last_name']} ({$userInfo['email']})");
+                        logAdminAction($db, $_SESSION['user_id'], 'DELETE_USER', "Kullanıcı silindi: {$userInfo['first_name']} {$userInfo['last_name']} ({$userInfo['email']})");
                     }
                     $message = 'Kullanıcı başarıyla silindi.';
                 } else {
@@ -128,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $db->prepare($query);
                 if ($stmt->execute([$hashedPassword, $userId])) {
                     if ($userInfo) {
-                        logAdminAction($_SESSION['user_id'], 'RESET_PASSWORD', "Parola sıfırlandı: {$userInfo['first_name']} {$userInfo['last_name']} ({$userInfo['email']})");
+                        logAdminAction($db, $_SESSION['user_id'], 'RESET_PASSWORD', "Parola sıfırlandı: {$userInfo['first_name']} {$userInfo['last_name']} ({$userInfo['email']})");
                     }
                     $message = 'Parola başarıyla sıfırlandı.';
                 } else {
