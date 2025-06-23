@@ -482,7 +482,7 @@ $provinces = $provincesStmt->fetchAll(PDO::FETCH_ASSOC);
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label class="form-label">İl</label>
-                                    <select class="form-select" name="province_id" id="addProvinceSelect">
+                                    <select class="form-select" name="province_id" id="addProvinceSelect" onchange="loadLocationsByProvince(this.value, 'addLocationSelect')">
                                         <option value="">İl Seçin</option>
                                         <?php foreach ($provinces as $province): ?>
                                             <option value="<?php echo $province['id']; ?>"><?php echo htmlspecialchars($province['province_name']); ?></option>
@@ -494,7 +494,7 @@ $provinces = $provincesStmt->fetchAll(PDO::FETCH_ASSOC);
                                 <div class="mb-3">
                                     <label class="form-label">Lokasyon</label>
                                     <select class="form-select" name="location_id" id="addLocationSelect">
-                                        <option value="">Önce firma seçin</option>
+                                        <option value="">İl seçin veya firma seçin</option>
                                     </select>
                                 </div>
                             </div>
@@ -589,7 +589,7 @@ $provinces = $provincesStmt->fetchAll(PDO::FETCH_ASSOC);
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label class="form-label">İl</label>
-                                    <select class="form-select" name="province_id" id="editProvinceSelect">
+                                    <select class="form-select" name="province_id" id="editProvinceSelect" onchange="loadLocationsByProvince(this.value, 'editLocationSelect')">
                                         <option value="">İl Seçin</option>
                                         <?php foreach ($provinces as $province): ?>
                                             <option value="<?php echo $province['id']; ?>"><?php echo htmlspecialchars($province['province_name']); ?></option>
@@ -603,7 +603,7 @@ $provinces = $provincesStmt->fetchAll(PDO::FETCH_ASSOC);
                                 <div class="mb-3">
                                     <label class="form-label">Lokasyon</label>
                                     <select class="form-select" name="location_id" id="editLocationSelect">
-                                        <option value="">Önce firma seçin</option>
+                                        <option value="">İl seçin veya firma seçin</option>
                                     </select>
                                 </div>
                             </div>
@@ -720,6 +720,33 @@ $provinces = $provincesStmt->fetchAll(PDO::FETCH_ASSOC);
                 });
         }
 
+        function loadLocationsByProvince(provinceId, targetSelectId) {
+            const locationSelect = document.getElementById(targetSelectId);
+            locationSelect.innerHTML = '<option value="">Yükleniyor...</option>';
+            
+            if (!provinceId) {
+                locationSelect.innerHTML = '<option value="">Önce il seçin</option>';
+                return;
+            }
+            
+            fetch('ajax/get_locations_by_province.php?province_id=' + provinceId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        locationSelect.innerHTML = '<option value="">Lokasyon Seçin</option>';
+                        data.locations.forEach(location => {
+                            locationSelect.innerHTML += `<option value="${location.id}">${location.location_name}</option>`;
+                        });
+                    } else {
+                        locationSelect.innerHTML = '<option value="">Hata oluştu</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    locationSelect.innerHTML = '<option value="">Hata oluştu</option>';
+                });
+        }
+
         function editUser(user) {
             document.getElementById('editUserId').value = user.id;
             document.getElementById('editFirstName').value = user.first_name;
@@ -736,6 +763,15 @@ $provinces = $provincesStmt->fetchAll(PDO::FETCH_ASSOC);
                 setTimeout(() => {
                     document.getElementById('editLocationSelect').value = user.location_id || '';
                 }, 500);
+            }
+            
+            if (user.province_id) {
+                setTimeout(() => {
+                    loadLocationsByProvince(user.province_id, 'editLocationSelect');
+                    setTimeout(() => {
+                        document.getElementById('editLocationSelect').value = user.location_id || '';
+                    }, 500);
+                }, 100);
             }
             
             new bootstrap.Modal(document.getElementById('editUserModal')).show();
