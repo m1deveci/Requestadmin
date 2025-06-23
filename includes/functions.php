@@ -1,5 +1,5 @@
 <?php
-require_once 'config/database.php';
+require_once __DIR__ . '/../config/database.php';
 
 function generateDeviceFingerprint() {
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
