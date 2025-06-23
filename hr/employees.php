@@ -24,7 +24,7 @@ if ($_POST) {
         $password = $_POST['password'] ?? '';
         $title = trim($_POST['title'] ?? '');
         $department = trim($_POST['department'] ?? '');
-        $managerId = $_POST['manager_id'] ?? null;
+        $managerId = !empty($_POST['manager_id']) ? $_POST['manager_id'] : null;
         
         if (empty($firstName) || empty($lastName) || empty($email) || empty($password)) {
             $message = 'Tüm zorunlu alanları doldurun.';
@@ -61,7 +61,7 @@ if ($_POST) {
         $email = trim($_POST['email'] ?? '');
         $title = trim($_POST['title'] ?? '');
         $department = trim($_POST['department'] ?? '');
-        $managerId = $_POST['manager_id'] ?? null;
+        $managerId = !empty($_POST['manager_id']) ? $_POST['manager_id'] : null;
         $status = $_POST['status'] ?? 'active';
         
         if (empty($firstName) || empty($lastName) || empty($email)) {
