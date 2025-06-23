@@ -2,8 +2,8 @@
 class Database {
     private $host = 'localhost';
     private $db_name = 'requestadmin';
-    private $username = 'root';
-    private $password = '';
+    private $username = 'requestadmin';
+    private $password = 'requestpass';
     private $conn;
 
     public function getConnection() {
