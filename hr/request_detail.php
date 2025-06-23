@@ -34,8 +34,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
             
         case 'update_status':
-            $newStatus = $_POST['new_status'];
+            $newStatus = $_POST['status'] ?? $_POST['new_status'] ?? '';
             $comments = $_POST['comments'] ?? '';
+            
+            if (empty($newStatus)) {
+                $_SESSION['error'] = 'Lütfen geçerli bir durum seçin.';
+                header('Location: request_detail.php?id=' . $requestId);
+                exit;
+            }
             
             $currentQuery = "SELECT r.status FROM requests r 
                            JOIN users u ON r.employee_id = u.id 
