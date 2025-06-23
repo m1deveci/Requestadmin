@@ -40,11 +40,13 @@ if ($_POST) {
             } else {
                 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
                 
-                $query = "INSERT INTO users (company_id, location_id, first_name, last_name, email, password, role, title, department, manager_id) 
-                         VALUES (?, ?, ?, ?, ?, ?, 'employee', ?, ?, ?)";
+                $provinceId = !empty($_POST['province_id']) ? $_POST['province_id'] : null;
+                
+                $query = "INSERT INTO users (company_id, location_id, province_id, first_name, last_name, email, password, role, title, department, manager_id) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?, 'employee', ?, ?, ?)";
                 $stmt = $db->prepare($query);
                 
-                if ($stmt->execute([$companyId, $locationId, $firstName, $lastName, $email, $hashedPassword, $title, $department, $managerId])) {
+                if ($stmt->execute([$companyId, $locationId, $provinceId, $firstName, $lastName, $email, $hashedPassword, $title, $department, $managerId])) {
                     logAdminAction($db, $_SESSION['user_id'], 'employee_add', "Yeni çalışan eklendi: $firstName $lastName ($email)");
                     $message = 'Çalışan başarıyla eklendi.';
                     $messageType = 'success';
@@ -76,11 +78,13 @@ if ($_POST) {
                 $message = 'Bu e-posta adresi zaten kullanılıyor.';
                 $messageType = 'danger';
             } else {
-                $query = "UPDATE users SET first_name = ?, last_name = ?, email = ?, title = ?, department = ?, manager_id = ?, status = ? 
+                $provinceId = !empty($_POST['province_id']) ? $_POST['province_id'] : null;
+                
+                $query = "UPDATE users SET first_name = ?, last_name = ?, email = ?, title = ?, department = ?, manager_id = ?, status = ?, province_id = ? 
                          WHERE id = ? AND company_id = ? AND location_id = ?";
                 $stmt = $db->prepare($query);
                 
-                if ($stmt->execute([$firstName, $lastName, $email, $title, $department, $managerId, $status, $userId, $companyId, $locationId])) {
+                if ($stmt->execute([$firstName, $lastName, $email, $title, $department, $managerId, $status, $provinceId, $userId, $companyId, $locationId])) {
                     logAdminAction($db, $_SESSION['user_id'], 'employee_edit', "Çalışan güncellendi: $firstName $lastName ($email)");
                     $message = 'Çalışan bilgileri güncellendi.';
                     $messageType = 'success';
@@ -424,6 +428,19 @@ $managers = $managersStmt->fetchAll(PDO::FETCH_ASSOC);
                             </div>
                         </div>
                         <div class="mb-3">
+                            <label class="form-label">Şehir *</label>
+                            <select class="form-select" name="province_id" required>
+                                <option value="">Şehir Seçin</option>
+                                <?php
+                                $provinceQuery = $db->prepare("SELECT id, province_name FROM provinces ORDER BY province_name");
+                                $provinceQuery->execute();
+                                while ($province = $provinceQuery->fetch(PDO::FETCH_ASSOC)) {
+                                    echo "<option value='{$province['id']}'>{$province['province_name']}</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Yönetici</label>
                             <select class="form-select" name="manager_id">
                                 <option value="">Yönetici Seçin</option>
@@ -502,6 +519,19 @@ $managers = $managersStmt->fetchAll(PDO::FETCH_ASSOC);
                             </div>
                         </div>
                         <div class="mb-3">
+                            <label class="form-label">Şehir *</label>
+                            <select class="form-select" name="province_id" id="edit_province_id" required>
+                                <option value="">Şehir Seçin</option>
+                                <?php
+                                $provinceQuery = $db->prepare("SELECT id, province_name FROM provinces ORDER BY province_name");
+                                $provinceQuery->execute();
+                                while ($province = $provinceQuery->fetch(PDO::FETCH_ASSOC)) {
+                                    echo "<option value='{$province['id']}'>{$province['province_name']}</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Yönetici</label>
                             <select class="form-select" name="manager_id" id="edit_manager_id">
                                 <option value="">Yönetici Seçin</option>
@@ -568,6 +598,7 @@ $managers = $managersStmt->fetchAll(PDO::FETCH_ASSOC);
             document.getElementById('edit_department').value = employee.department || '';
             document.getElementById('edit_status').value = employee.status;
             document.getElementById('edit_manager_id').value = employee.manager_id || '';
+            document.getElementById('edit_province_id').value = employee.province_id || '';
             
             new bootstrap.Modal(document.getElementById('editEmployeeModal')).show();
         }

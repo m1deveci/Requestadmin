@@ -119,10 +119,11 @@ function authenticateUser($email, $password) {
         return ['success' => false, 'message' => 'Çok fazla başarısız deneme. Erişim engellendi.'];
     }
     
-    $query = "SELECT u.*, c.status as company_status, c.company_name, l.location_name 
+    $query = "SELECT u.*, c.status as company_status, c.company_name, l.location_name, p.province_name 
               FROM users u 
               JOIN companies c ON u.company_id = c.id 
               LEFT JOIN locations l ON u.location_id = l.id 
+              LEFT JOIN provinces p ON u.province_id = p.id
               WHERE u.email = ? AND u.status = 'active'";
     
     $stmt = $db->prepare($query);

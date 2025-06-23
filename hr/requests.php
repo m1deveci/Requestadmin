@@ -9,7 +9,7 @@ requireAuth(['hr']);
 $database = new Database();
 $db = $database->getConnection();
 
-$locationId = $_SESSION['location_id'];
+$provinceId = $_SESSION['province_id'];
 $userId = $_SESSION['user_id'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -18,9 +18,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     
     switch ($action) {
         case 'assign_to_me':
-            $query = "UPDATE requests SET assigned_to = ?, status = 'assigned' WHERE id = ?";
+            $query = "UPDATE requests r 
+                     JOIN users u ON r.employee_id = u.id 
+                     SET r.assigned_to = ?, r.status = 'assigned' 
+                     WHERE r.id = ? AND u.province_id = ?";
             $stmt = $db->prepare($query);
-            if ($stmt->execute([$userId, $requestId])) {
+            if ($stmt->execute([$userId, $requestId, $provinceId])) {
                 $historyQuery = "INSERT INTO request_status_history (request_id, old_status, new_status, changed_by, comments) 
                                VALUES (?, 'pending', 'assigned', ?, 'Talep atandı')";
                 $historyStmt = $db->prepare($historyQuery);
@@ -37,27 +40,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $newStatus = $_POST['new_status'];
             $comments = $_POST['comments'] ?? '';
             
-            $currentQuery = "SELECT status FROM requests WHERE id = ?";
+            $currentQuery = "SELECT r.status FROM requests r 
+                           JOIN users u ON r.employee_id = u.id 
+                           WHERE r.id = ? AND u.province_id = ?";
             $currentStmt = $db->prepare($currentQuery);
-            $currentStmt->execute([$requestId]);
+            $currentStmt->execute([$requestId, $provinceId]);
             $oldStatus = $currentStmt->fetchColumn();
             
-            $query = "UPDATE requests SET status = ?, updated_at = NOW() WHERE id = ?";
-            if ($newStatus === 'completed') {
-                $query = "UPDATE requests SET status = ?, completed_at = NOW(), updated_at = NOW() WHERE id = ?";
-            }
-            
-            $stmt = $db->prepare($query);
-            if ($stmt->execute([$newStatus, $requestId])) {
-                $historyQuery = "INSERT INTO request_status_history (request_id, old_status, new_status, changed_by, comments) 
-                               VALUES (?, ?, ?, ?, ?)";
-                $historyStmt = $db->prepare($historyQuery);
-                $historyStmt->execute([$requestId, $oldStatus, $newStatus, $userId, $comments]);
+            if ($oldStatus) {
+                $query = "UPDATE requests r 
+                         JOIN users u ON r.employee_id = u.id 
+                         SET r.status = ?, r.updated_at = NOW() 
+                         WHERE r.id = ? AND u.province_id = ?";
+                if ($newStatus === 'completed') {
+                    $query = "UPDATE requests r 
+                             JOIN users u ON r.employee_id = u.id 
+                             SET r.status = ?, r.completed_at = NOW(), r.updated_at = NOW() 
+                             WHERE r.id = ? AND u.province_id = ?";
+                }
                 
-                $mailService = new MailService();
-                $mailService->sendRequestNotification($requestId, 'status_update');
-                
-                $_SESSION['success'] = 'Talep durumu güncellendi.';
+                $stmt = $db->prepare($query);
+                if ($stmt->execute([$newStatus, $requestId, $provinceId])) {
+                    $historyQuery = "INSERT INTO request_status_history (request_id, old_status, new_status, changed_by, comments) 
+                                   VALUES (?, ?, ?, ?, ?)";
+                    $historyStmt = $db->prepare($historyQuery);
+                    $historyStmt->execute([$requestId, $oldStatus, $newStatus, $userId, $comments]);
+                    
+                    $mailService = new MailService();
+                    $mailService->sendRequestNotification($requestId, 'status_update');
+                    
+                    $_SESSION['success'] = 'Talep durumu güncellendi.';
+                }
             }
             break;
     }
@@ -69,8 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 $statusFilter = $_GET['status'] ?? 'all';
 $assignedFilter = $_GET['assigned_to'] ?? 'all';
 
-$whereClause = 'WHERE u.location_id = ?';
-$params = [$locationId];
+$whereClause = 'WHERE u.province_id = ?';
+$params = [$provinceId];
 
 if ($statusFilter !== 'all') {
     $whereClause .= ' AND r.status = ?';

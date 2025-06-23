@@ -26,6 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['location_id'] = $user['location_id'];
         $_SESSION['company_name'] = $user['company_name'];
         $_SESSION['location_name'] = $user['location_name'];
+        $_SESSION['province_id'] = $user['province_id'];
+        $_SESSION['province_name'] = $user['province_name'];
         
         switch ($user['role']) {
             case 'admin':

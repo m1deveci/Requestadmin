@@ -8,53 +8,53 @@ requireAuth(['hr']);
 $database = new Database();
 $db = $database->getConnection();
 
-$locationId = $_SESSION['location_id'];
+$provinceId = $_SESSION['province_id'];
 
 $query = "SELECT COUNT(*) as total FROM requests r 
           JOIN users u ON r.employee_id = u.id 
-          WHERE u.location_id = ?";
+          WHERE u.province_id = ?";
 $stmt = $db->prepare($query);
-$stmt->execute([$locationId]);
+$stmt->execute([$provinceId]);
 $stats['total_requests'] = $stmt->fetchColumn();
 
 $query = "SELECT COUNT(*) as total FROM requests r 
           JOIN users u ON r.employee_id = u.id 
-          WHERE u.location_id = ? AND r.status = 'pending'";
+          WHERE u.province_id = ? AND r.status = 'pending'";
 $stmt = $db->prepare($query);
-$stmt->execute([$locationId]);
+$stmt->execute([$provinceId]);
 $stats['pending_requests'] = $stmt->fetchColumn();
 
 $query = "SELECT COUNT(*) as total FROM requests r 
           JOIN users u ON r.employee_id = u.id 
-          WHERE u.location_id = ? AND r.assigned_to = ?";
+          WHERE u.province_id = ? AND r.assigned_to = ?";
 $stmt = $db->prepare($query);
-$stmt->execute([$locationId, $_SESSION['user_id']]);
+$stmt->execute([$provinceId, $_SESSION['user_id']]);
 $stats['my_requests'] = $stmt->fetchColumn();
 
 $query = "SELECT COUNT(*) as total FROM requests r 
           JOIN users u ON r.employee_id = u.id 
-          WHERE u.location_id = ? AND r.status = 'completed'";
+          WHERE u.province_id = ? AND r.status = 'completed'";
 $stmt = $db->prepare($query);
-$stmt->execute([$locationId]);
+$stmt->execute([$provinceId]);
 $stats['completed_requests'] = $stmt->fetchColumn();
 
 $query = "SELECT COUNT(*) as total FROM requests r 
           JOIN users u ON r.employee_id = u.id 
-          WHERE u.location_id = ? AND r.status NOT IN ('completed', 'cancelled') 
+          WHERE u.province_id = ? AND r.status NOT IN ('completed', 'cancelled') 
           AND r.created_at < DATE_SUB(NOW(), INTERVAL 15 DAY)";
 $stmt = $db->prepare($query);
-$stmt->execute([$locationId]);
+$stmt->execute([$provinceId]);
 $stats['old_requests'] = $stmt->fetchColumn();
 
 $query = "SELECT r.*, u.first_name, u.last_name, c.category_name 
           FROM requests r 
           JOIN users u ON r.employee_id = u.id 
           JOIN request_categories c ON r.category_id = c.id 
-          WHERE u.location_id = ? 
+          WHERE u.province_id = ? 
           ORDER BY r.created_at DESC 
           LIMIT 10";
 $stmt = $db->prepare($query);
-$stmt->execute([$locationId]);
+$stmt->execute([$provinceId]);
 $recent_requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>

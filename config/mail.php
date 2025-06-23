@@ -43,7 +43,24 @@ class MailService {
         $existingLogs[] = $logEntry;
         file_put_contents($logFile, json_encode($existingLogs, JSON_PRETTY_PRINT));
         
-        return true; // Simulate successful sending
+        if (!empty($this->settings['smtp_host']) && !empty($this->settings['smtp_username'])) {
+            try {
+                $headers = "MIME-Version: 1.0\r\n";
+                if ($isHTML) {
+                    $headers .= "Content-type: text/html; charset=UTF-8\r\n";
+                } else {
+                    $headers .= "Content-type: text/plain; charset=UTF-8\r\n";
+                }
+                $headers .= "From: " . $this->settings['smtp_username'] . "\r\n";
+                
+                return mail($to, $subject, $body, $headers);
+            } catch (Exception $e) {
+                error_log("Email sending failed: " . $e->getMessage());
+                return false;
+            }
+        }
+        
+        return true;
     }
     
     public function sendRequestNotification($requestId, $type = 'new') {

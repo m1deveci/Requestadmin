@@ -39,13 +39,23 @@ function initializeDatabase() {
     ) COLLATE utf8_turkish_ci";
     $db->exec($query);
     
+    $query = "CREATE TABLE IF NOT EXISTS provinces (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        province_name VARCHAR(100) NOT NULL COLLATE utf8_turkish_ci,
+        province_code VARCHAR(2) NOT NULL UNIQUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) COLLATE utf8_turkish_ci";
+    $db->exec($query);
+    
     $query = "CREATE TABLE IF NOT EXISTS locations (
         id INT AUTO_INCREMENT PRIMARY KEY,
         company_id INT NOT NULL,
         location_name VARCHAR(255) NOT NULL COLLATE utf8_turkish_ci,
         address TEXT COLLATE utf8_turkish_ci,
+        province_id INT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+        FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+        FOREIGN KEY (province_id) REFERENCES provinces(id) ON DELETE SET NULL
     ) COLLATE utf8_turkish_ci";
     $db->exec($query);
     
@@ -53,6 +63,7 @@ function initializeDatabase() {
         id INT AUTO_INCREMENT PRIMARY KEY,
         company_id INT NOT NULL,
         location_id INT,
+        province_id INT,
         first_name VARCHAR(100) NOT NULL COLLATE utf8_turkish_ci,
         last_name VARCHAR(100) NOT NULL COLLATE utf8_turkish_ci,
         email VARCHAR(255) NOT NULL UNIQUE,
@@ -70,6 +81,7 @@ function initializeDatabase() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
         FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE SET NULL,
+        FOREIGN KEY (province_id) REFERENCES provinces(id) ON DELETE SET NULL,
         FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL
     ) COLLATE utf8_turkish_ci";
     $db->exec($query);
@@ -151,6 +163,30 @@ function initializeDatabase() {
     ) COLLATE utf8_turkish_ci";
     $db->exec($query);
     
+    $provinces = [
+        ['Adana', '01'], ['Adıyaman', '02'], ['Afyonkarahisar', '03'], ['Ağrı', '04'], ['Amasya', '05'],
+        ['Ankara', '06'], ['Antalya', '07'], ['Artvin', '08'], ['Aydın', '09'], ['Balıkesir', '10'],
+        ['Bilecik', '11'], ['Bingöl', '12'], ['Bitlis', '13'], ['Bolu', '14'], ['Burdur', '15'],
+        ['Bursa', '16'], ['Çanakkale', '17'], ['Çankırı', '18'], ['Çorum', '19'], ['Denizli', '20'],
+        ['Diyarbakır', '21'], ['Edirne', '22'], ['Elazığ', '23'], ['Erzincan', '24'], ['Erzurum', '25'],
+        ['Eskişehir', '26'], ['Gaziantep', '27'], ['Giresun', '28'], ['Gümüşhane', '29'], ['Hakkâri', '30'],
+        ['Hatay', '31'], ['Isparta', '32'], ['Mersin', '33'], ['İstanbul', '34'], ['İzmir', '35'],
+        ['Kars', '36'], ['Kastamonu', '37'], ['Kayseri', '38'], ['Kırklareli', '39'], ['Kırşehir', '40'],
+        ['Kocaeli', '41'], ['Konya', '42'], ['Kütahya', '43'], ['Malatya', '44'], ['Manisa', '45'],
+        ['Kahramanmaraş', '46'], ['Mardin', '47'], ['Muğla', '48'], ['Muş', '49'], ['Nevşehir', '50'],
+        ['Niğde', '51'], ['Ordu', '52'], ['Rize', '53'], ['Sakarya', '54'], ['Samsun', '55'],
+        ['Siirt', '56'], ['Sinop', '57'], ['Sivas', '58'], ['Tekirdağ', '59'], ['Tokat', '60'],
+        ['Trabzon', '61'], ['Tunceli', '62'], ['Şanlıurfa', '63'], ['Uşak', '64'], ['Van', '65'],
+        ['Yozgat', '66'], ['Zonguldak', '67'], ['Aksaray', '68'], ['Bayburt', '69'], ['Karaman', '70'],
+        ['Kırıkkale', '71'], ['Batman', '72'], ['Şırnak', '73'], ['Bartın', '74'], ['Ardahan', '75'],
+        ['Iğdır', '76'], ['Yalova', '77'], ['Karabük', '78'], ['Kilis', '79'], ['Osmaniye', '80'], ['Düzce', '81']
+    ];
+    
+    $stmt = $db->prepare("INSERT IGNORE INTO provinces (province_name, province_code) VALUES (?, ?)");
+    foreach ($provinces as $province) {
+        $stmt->execute($province);
+    }
+    
     $categories = [
         ['Ofis Eşyası', false],
         ['Tamirat', true],
@@ -173,8 +209,13 @@ function initializeDatabase() {
     $company = $companyQuery->fetch(PDO::FETCH_ASSOC);
     $companyId = $company ? $company['id'] : 1;
     
-    $stmt = $db->prepare("INSERT IGNORE INTO locations (company_id, location_name, address) VALUES (?, ?, ?)");
-    $stmt->execute([$companyId, 'Main Office', 'Main Office Address']);
+    $istanbulQuery = $db->prepare("SELECT id FROM provinces WHERE province_name = 'İstanbul' LIMIT 1");
+    $istanbulQuery->execute();
+    $istanbul = $istanbulQuery->fetch(PDO::FETCH_ASSOC);
+    $istanbulId = $istanbul ? $istanbul['id'] : 1;
+    
+    $stmt = $db->prepare("INSERT IGNORE INTO locations (company_id, location_name, address, province_id) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$companyId, 'Main Office', 'Main Office Address', $istanbulId]);
     
     $locationQuery = $db->prepare("SELECT id FROM locations WHERE company_id = ? LIMIT 1");
     $locationQuery->execute([$companyId]);
@@ -182,16 +223,16 @@ function initializeDatabase() {
     $locationId = $location ? $location['id'] : null;
     
     $admin_password = password_hash('admin123', PASSWORD_DEFAULT);
-    $stmt = $db->prepare("INSERT IGNORE INTO users (company_id, location_id, first_name, last_name, email, password, role) VALUES (?, ?, 'System', 'Admin', 'admin@system.com', ?, 'admin')");
-    $stmt->execute([$companyId, $locationId, $admin_password]);
+    $stmt = $db->prepare("INSERT IGNORE INTO users (company_id, location_id, province_id, first_name, last_name, email, password, role) VALUES (?, ?, ?, 'System', 'Admin', 'admin@system.com', ?, 'admin')");
+    $stmt->execute([$companyId, $locationId, $istanbulId, $admin_password]);
     
     $hr_password = password_hash('hr123', PASSWORD_DEFAULT);
-    $stmt = $db->prepare("INSERT IGNORE INTO users (company_id, location_id, first_name, last_name, email, password, role, title, department) VALUES (?, ?, 'HR', 'Manager', 'hr@test.com', ?, 'hr', 'HR Manager', 'Human Resources')");
-    $stmt->execute([$companyId, $locationId, $hr_password]);
+    $stmt = $db->prepare("INSERT IGNORE INTO users (company_id, location_id, province_id, first_name, last_name, email, password, role, title, department) VALUES (?, ?, ?, 'HR', 'Manager', 'hr@test.com', ?, 'hr', 'HR Manager', 'Human Resources')");
+    $stmt->execute([$companyId, $locationId, $istanbulId, $hr_password]);
     
     $emp_password = password_hash('emp123', PASSWORD_DEFAULT);
-    $stmt = $db->prepare("INSERT IGNORE INTO users (company_id, location_id, first_name, last_name, email, password, role, title, department) VALUES (?, ?, 'Test', 'Employee', 'employee@test.com', ?, 'employee', 'Employee', 'General')");
-    $stmt->execute([$companyId, $locationId, $emp_password]);
+    $stmt = $db->prepare("INSERT IGNORE INTO users (company_id, location_id, province_id, first_name, last_name, email, password, role, title, department) VALUES (?, ?, ?, 'Test', 'Employee', 'employee@test.com', ?, 'employee', 'Employee', 'General')");
+    $stmt->execute([$companyId, $locationId, $istanbulId, $emp_password]);
     
     $settings = [
         ['site_title', 'Request Admin - İdari İşler Talep Yönetim Sistemi'],
@@ -210,8 +251,8 @@ function initializeDatabase() {
     }
 }
 
-if (!file_exists('database_initialized.flag')) {
-    initializeDatabase();
-    file_put_contents('database_initialized.flag', date('Y-m-d H:i:s'));
-}
+// if (!file_exists('database_initialized.flag')) {
+//     initializeDatabase();
+//     file_put_contents('database_initialized.flag', date('Y-m-d H:i:s'));
+// }
 ?>
