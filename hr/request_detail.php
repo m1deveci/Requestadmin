@@ -76,10 +76,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-$query = "SELECT r.*, u.first_name, u.last_name, u.email as employee_email, u.phone, u.department,
+$query = "SELECT r.*, u.first_name, u.last_name, u.email as employee_email, u.department,
                  c.category_name, comp.company_name, loc.location_name, prov.province_name,
                  CASE WHEN r.assigned_to IS NOT NULL THEN CONCAT(a.first_name, ' ', a.last_name) ELSE NULL END as assigned_to_name
-          FROM requests r 
+          FROM requests r
           JOIN users u ON r.employee_id = u.id 
           JOIN request_categories c ON r.category_id = c.id 
           JOIN companies comp ON u.company_id = comp.id
