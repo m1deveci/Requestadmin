@@ -212,62 +212,11 @@ $provinces = $provincesStmt->fetchAll(PDO::FETCH_ASSOC);
 <body>
     <div class="container-fluid">
         <div class="row">
-            <nav class="col-md-3 col-lg-2 d-md-block bg-dark sidebar">
-                <div class="position-sticky pt-3">
-                    <div class="text-center mb-4">
-                        <h5 class="text-white">Admin Panel</h5>
-                        <small class="text-muted"><?php echo $_SESSION['user_name']; ?></small>
-                    </div>
-                    
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="dashboard.php">
-                                <i class="fas fa-tachometer-alt"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="companies.php">
-                                <i class="fas fa-building"></i> Firmalar
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="locations.php">
-                                <i class="fas fa-map-marker-alt"></i> Lokasyonlar
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="users.php">
-                                <i class="fas fa-users"></i> Kullanıcılar
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="requests.php">
-                                <i class="fas fa-clipboard-list"></i> Talepler
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="categories.php">
-                                <i class="fas fa-tags"></i> Kategoriler
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="logs.php">
-                                <i class="fas fa-history"></i> Loglar
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="settings.php">
-                                <i class="fas fa-cog"></i> Ayarlar
-                            </a>
-                        </li>
-                        <li class="nav-item mt-3">
-                            <a class="nav-link text-danger" href="../auth/logout.php">
-                                <i class="fas fa-sign-out-alt"></i> Çıkış
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+            <!-- Sidebar -->
+            <?php 
+            require_once '../includes/sidebar.php';
+            renderSidebar();
+            ?>
 
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">

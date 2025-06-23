@@ -109,62 +109,10 @@ $companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block sidebar">
-                <div class="position-sticky pt-3">
-                    <div class="text-center mb-4">
-                        <h5 class="text-white">Admin Panel</h5>
-                        <small class="text-light"><?php echo htmlspecialchars($_SESSION['user_name']); ?></small>
-                    </div>
-                    
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="dashboard.php">
-                                <i class="fas fa-tachometer-alt"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="companies.php">
-                                <i class="fas fa-building"></i> Firmalar
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="locations.php">
-                                <i class="fas fa-map-marker-alt"></i> Lokasyonlar
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="users.php">
-                                <i class="fas fa-users"></i> Kullanıcılar
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="requests.php">
-                                <i class="fas fa-tasks"></i> Talepler
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="categories.php">
-                                <i class="fas fa-tags"></i> Kategoriler
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="settings.php">
-                                <i class="fas fa-cog"></i> Ayarlar
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="logs.php">
-                                <i class="fas fa-file-alt"></i> Loglar
-                            </a>
-                        </li>
-                        <li class="nav-item mt-3">
-                            <a class="nav-link text-danger" href="../auth/logout.php">
-                                <i class="fas fa-sign-out-alt"></i> Çıkış
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+            <?php 
+            require_once '../includes/sidebar.php';
+            renderSidebar();
+            ?>
 
             <!-- Main content -->
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
