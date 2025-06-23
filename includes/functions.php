@@ -255,7 +255,7 @@ function getStatusBadgeColor($status) {
 function getStatusText($status) {
     switch ($status) {
         case 'pending':
-            return 'Bekleyen';
+            return 'Talep Oluşturuldu';
         case 'assigned':
             return 'Atanmış';
         case 'in_progress':
@@ -264,7 +264,10 @@ function getStatusText($status) {
             return 'Tamamlandı';
         case 'cancelled':
             return 'İptal Edildi';
+        case 'rejected':
+            return 'Reddedildi';
         case 'waiting_manager_approval':
+        case 'manager_approval':
             return 'Yönetici Onayı Bekliyor';
         case 'manager_approved':
             return 'Yönetici Onayladı';

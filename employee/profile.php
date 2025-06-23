@@ -133,43 +133,11 @@ $recentRequests = $recentRequestsStmt->fetchAll(PDO::FETCH_ASSOC);
 <body>
     <div class="container-fluid">
         <div class="row">
-            <nav class="col-md-3 col-lg-2 d-md-block bg-dark sidebar">
-                <div class="position-sticky pt-3">
-                    <div class="text-center mb-4">
-                        <h5 class="text-white">Çalışan Paneli</h5>
-                        <small class="text-muted"><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></small>
-                        <small class="text-muted d-block"><?php echo htmlspecialchars($user['location_name'] ?? 'Lokasyon'); ?></small>
-                    </div>
-                    
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="dashboard.php">
-                                <i class="fas fa-tachometer-alt"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="requests.php">
-                                <i class="fas fa-list"></i> Taleplerim
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="new_request.php">
-                                <i class="fas fa-plus"></i> Yeni Talep
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white active" href="profile.php">
-                                <i class="fas fa-user"></i> Profil
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="../auth/logout.php">
-                                <i class="fas fa-sign-out-alt"></i> Çıkış
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+            <!-- Sidebar -->
+            <?php 
+            require_once '../includes/sidebar.php';
+            renderSidebar();
+            ?>
 
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">

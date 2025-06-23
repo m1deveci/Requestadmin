@@ -121,48 +121,10 @@ $statusHistory = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block sidebar">
-                <div class="position-sticky pt-3">
-                    <div class="text-center mb-4">
-                        <h5 class="text-white">İdari İşler</h5>
-                        <small class="text-light"><?php echo htmlspecialchars($_SESSION['user_name']); ?></small>
-                        <small class="text-light d-block"><?php echo htmlspecialchars($_SESSION['province_name'] ?? 'Merkez'); ?></small>
-                    </div>
-                    
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="dashboard.php">
-                                <i class="fas fa-tachometer-alt"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="requests.php">
-                                <i class="fas fa-tasks"></i> Talepler
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="employees.php">
-                                <i class="fas fa-users"></i> Çalışanlar
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="reports.php">
-                                <i class="fas fa-chart-bar"></i> Raporlar
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="profile.php">
-                                <i class="fas fa-user"></i> Profil
-                            </a>
-                        </li>
-                        <li class="nav-item mt-3">
-                            <a class="nav-link text-danger" href="../auth/logout.php">
-                                <i class="fas fa-sign-out-alt"></i> Çıkış
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+            <?php 
+            require_once '../includes/sidebar.php';
+            renderSidebar();
+            ?>
 
             <!-- Main content -->
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
@@ -360,11 +322,12 @@ $statusHistory = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
                                     </form>
                                 <?php endif; ?>
                                 
-                                <?php if ($request['assigned_to'] == $userId): ?>
-                                    <button class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#statusModal">
-                                        <i class="fas fa-edit"></i> Durum Güncelle
-                                    </button>
-                                <?php endif; ?>
+                                <button class="btn btn-success w-100 mb-2" data-bs-toggle="modal" data-bs-target="#statusModal">
+                                    <i class="fas fa-edit"></i> Durum Güncelle
+                                </button>
+                                <button class="btn btn-danger w-100" onclick="rejectRequest()">
+                                    <i class="fas fa-times"></i> Reddet
+                                </button>
                                 
                                 <a href="requests.php" class="btn btn-secondary w-100 mt-2">
                                     <i class="fas fa-arrow-left"></i> Taleplere Dön
@@ -378,7 +341,6 @@ $statusHistory = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
     <!-- Status Update Modal -->
-    <?php if ($request['assigned_to'] == $userId): ?>
     <div class="modal fade" id="statusModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -391,11 +353,31 @@ $statusHistory = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
                         <input type="hidden" name="action" value="update_status">
                         
                         <div class="mb-3">
-                            <label for="new_status" class="form-label">Yeni Durum</label>
-                            <select class="form-select" id="new_status" name="new_status" required>
-                                <option value="in_progress" <?php echo $request['status'] === 'in_progress' ? 'selected' : ''; ?>>İşlemde</option>
-                                <option value="completed" <?php echo $request['status'] === 'completed' ? 'selected' : ''; ?>>Tamamlandı</option>
-                                <option value="rejected" <?php echo $request['status'] === 'rejected' ? 'selected' : ''; ?>>Reddedildi</option>
+                            <label for="status" class="form-label">Yeni Durum</label>
+                            <select class="form-select" id="status" name="status" required>
+                                <option value="">Durum Seçin</option>
+                                <option value="assigned" <?php echo $request['status'] == 'assigned' ? 'selected' : ''; ?>>Atandı</option>
+                                <option value="in_progress" <?php echo $request['status'] == 'in_progress' ? 'selected' : ''; ?>>İşlemde</option>
+                                <option value="completed" <?php echo $request['status'] == 'completed' ? 'selected' : ''; ?>>Tamamlandı</option>
+                                <option value="cancelled" <?php echo $request['status'] == 'cancelled' ? 'selected' : ''; ?>>İptal Edildi</option>
+                                <option value="rejected" <?php echo $request['status'] == 'rejected' ? 'selected' : ''; ?>>Reddedildi</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="assigned_to" class="form-label">Atanan Kişi</label>
+                            <select class="form-select" id="assigned_to" name="assigned_to">
+                                <option value="">Atama Yapılmadı</option>
+                                <?php 
+                                $hr_query = "SELECT id, first_name, last_name FROM users WHERE role = 'hr' AND province_id = ?";
+                                $hr_stmt = $db->prepare($hr_query);
+                                $hr_stmt->execute([$_SESSION['province_id']]);
+                                $hr_staff = $hr_stmt->fetchAll(PDO::FETCH_ASSOC);
+                                foreach ($hr_staff as $staff): ?>
+                                    <option value="<?php echo $staff['id']; ?>" <?php echo $request['assigned_to'] == $staff['id'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($staff['first_name'] . ' ' . $staff['last_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                         
@@ -413,8 +395,23 @@ $statusHistory = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
     </div>
-    <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function rejectRequest() {
+            const reason = prompt('Lütfen red sebebini belirtiniz:');
+            if (reason && reason.trim()) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `
+                    <input type="hidden" name="action" value="update_status">
+                    <input type="hidden" name="status" value="rejected">
+                    <input type="hidden" name="comments" value="${reason}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    </script>
 </body>
 </html>
