@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
         if ($_POST['action'] === 'add') {
             $companyId = $_POST['company_id'];
+            $provinceId = $_POST['province_id'] ?? null;
             $locationName = trim($_POST['location_name']);
             $address = trim($_POST['address']);
             
@@ -24,9 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$companyId]);
                 $companyName = $stmt->fetchColumn();
                 
-                $query = "INSERT INTO locations (company_id, location_name, address) VALUES (?, ?, ?)";
+                $query = "INSERT INTO locations (company_id, province_id, location_name, address) VALUES (?, ?, ?, ?)";
                 $stmt = $db->prepare($query);
-                if ($stmt->execute([$companyId, $locationName, $address])) {
+                if ($stmt->execute([$companyId, $provinceId, $locationName, $address])) {
                     logAdminAction($db, $_SESSION['user_id'], 'location_added', "Lokasyon eklendi: {$locationName} - {$companyName}");
                     $message = 'Lokasyon başarıyla eklendi.';
                 } else {
@@ -38,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($_POST['action'] === 'edit') {
             $locationId = $_POST['location_id'];
             $companyId = $_POST['company_id'];
+            $provinceId = $_POST['province_id'] ?? null;
             $locationName = trim($_POST['location_name']);
             $address = trim($_POST['address']);
             
@@ -47,9 +49,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$companyId]);
                 $companyName = $stmt->fetchColumn();
                 
-                $query = "UPDATE locations SET company_id = ?, location_name = ?, address = ? WHERE id = ?";
+                $query = "UPDATE locations SET company_id = ?, province_id = ?, location_name = ?, address = ? WHERE id = ?";
                 $stmt = $db->prepare($query);
-                if ($stmt->execute([$companyId, $locationName, $address, $locationId])) {
+                if ($stmt->execute([$companyId, $provinceId, $locationName, $address, $locationId])) {
                     logAdminAction($db, $_SESSION['user_id'], 'location_updated', "Lokasyon güncellendi: {$locationName} - {$companyName} (ID: $locationId)");
                     $message = 'Lokasyon başarıyla güncellendi.';
                 } else {
@@ -80,10 +82,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$query = "SELECT l.*, c.company_name, 
+$query = "SELECT l.*, c.company_name, p.province_name,
           (SELECT COUNT(*) FROM users WHERE location_id = l.id) as user_count
           FROM locations l 
           JOIN companies c ON l.company_id = c.id 
+          LEFT JOIN provinces p ON l.province_id = p.id
           ORDER BY c.company_name, l.location_name";
 $stmt = $db->prepare($query);
 $stmt->execute();
@@ -93,6 +96,11 @@ $query = "SELECT id, company_name FROM companies WHERE status = 'approved' ORDER
 $stmt = $db->prepare($query);
 $stmt->execute();
 $companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$provincesQuery = "SELECT id, province_name FROM provinces ORDER BY province_name";
+$provincesStmt = $db->prepare($provincesQuery);
+$provincesStmt->execute();
+$provinces = $provincesStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -107,63 +115,19 @@ $companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <body>
     <div class="container-fluid">
         <div class="row">
+            <!-- Hamburger Menu Button -->
+            <button class="hamburger-menu" id="hamburgerMenu">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <!-- Sidebar Overlay -->
+            <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
             <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block sidebar">
-                <div class="position-sticky pt-3">
-                    <div class="text-center mb-4">
-                        <h5 class="text-white">Admin Panel</h5>
-                        <small class="text-light"><?php echo htmlspecialchars($_SESSION['user_name']); ?></small>
-                    </div>
-                    
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="dashboard.php">
-                                <i class="fas fa-tachometer-alt"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="companies.php">
-                                <i class="fas fa-building"></i> Firmalar
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="locations.php">
-                                <i class="fas fa-map-marker-alt"></i> Lokasyonlar
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="users.php">
-                                <i class="fas fa-users"></i> Kullanıcılar
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="requests.php">
-                                <i class="fas fa-tasks"></i> Talepler
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="categories.php">
-                                <i class="fas fa-tags"></i> Kategoriler
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="settings.php">
-                                <i class="fas fa-cog"></i> Ayarlar
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="logs.php">
-                                <i class="fas fa-file-alt"></i> Loglar
-                            </a>
-                        </li>
-                        <li class="nav-item mt-3">
-                            <a class="nav-link text-danger" href="../auth/logout.php">
-                                <i class="fas fa-sign-out-alt"></i> Çıkış
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+            <?php 
+            require_once '../includes/sidebar.php';
+            renderSidebar();
+            ?>
 
             <!-- Main content -->
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
@@ -210,6 +174,7 @@ $companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <tr>
                                         <th>ID</th>
                                         <th>Firma</th>
+                                        <th>İl</th>
                                         <th>Lokasyon Adı</th>
                                         <th>Adres</th>
                                         <th>Kullanıcı Sayısı</th>
@@ -222,6 +187,7 @@ $companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <tr>
                                             <td><?php echo $location['id']; ?></td>
                                             <td><?php echo htmlspecialchars($location['company_name']); ?></td>
+                                            <td><?php echo htmlspecialchars($location['province_name'] ?? '-'); ?></td>
                                             <td><?php echo htmlspecialchars($location['location_name']); ?></td>
                                             <td><?php echo htmlspecialchars($location['address'] ?? '-'); ?></td>
                                             <td>
@@ -277,6 +243,18 @@ $companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                         
                         <div class="mb-3">
+                            <label for="province_id" class="form-label">İl</label>
+                            <select class="form-select" id="province_id" name="province_id">
+                                <option value="">İl Seçin (Opsiyonel)</option>
+                                <?php foreach ($provinces as $province): ?>
+                                    <option value="<?php echo $province['id']; ?>">
+                                        <?php echo htmlspecialchars($province['province_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
                             <label for="location_name" class="form-label">Lokasyon Adı</label>
                             <input type="text" class="form-control" id="location_name" name="location_name" required>
                         </div>
@@ -323,6 +301,19 @@ $companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </div>
                             
                             <div class="mb-3">
+                                <label for="edit_province_id<?php echo $location['id']; ?>" class="form-label">İl</label>
+                                <select class="form-select" id="edit_province_id<?php echo $location['id']; ?>" name="province_id">
+                                    <option value="">İl Seçin (Opsiyonel)</option>
+                                    <?php foreach ($provinces as $province): ?>
+                                        <option value="<?php echo $province['id']; ?>" 
+                                                <?php echo $province['id'] == $location['province_id'] ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($province['province_name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
                                 <label for="edit_location_name<?php echo $location['id']; ?>" class="form-label">Lokasyon Adı</label>
                                 <input type="text" class="form-control" id="edit_location_name<?php echo $location['id']; ?>" 
                                        name="location_name" value="<?php echo htmlspecialchars($location['location_name']); ?>" required>
@@ -358,6 +349,45 @@ $companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 document.getElementById('deleteForm').submit();
             }
         }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const hamburgerMenu = document.getElementById('hamburgerMenu');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            
+            function toggleSidebar() {
+                sidebar.classList.toggle('show');
+                sidebarOverlay.classList.toggle('show');
+            }
+            
+            function closeSidebar() {
+                sidebar.classList.remove('show');
+                sidebarOverlay.classList.remove('show');
+            }
+            
+            if (hamburgerMenu) {
+                hamburgerMenu.addEventListener('click', toggleSidebar);
+            }
+            
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', closeSidebar);
+            }
+            
+            const navLinks = sidebar.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth <= 768) {
+                        closeSidebar();
+                    }
+                });
+            });
+            
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 768) {
+                    closeSidebar();
+                }
+            });
+        });
     </script>
 </body>
 </html>
