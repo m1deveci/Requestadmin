@@ -206,7 +206,7 @@ $statusHistory = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
                                     <div class="col-sm-9"><?php echo formatDate($request['completed_at']); ?></div>
                                 </div>
                                 <?php endif; ?>
-                                <?php if ($request['attachment']): ?>
+                                <?php if (isset($request['attachment']) && $request['attachment']): ?>
                                 <div class="row mb-3">
                                     <div class="col-sm-3"><strong>Ek Dosya:</strong></div>
                                     <div class="col-sm-9">
@@ -276,7 +276,7 @@ $statusHistory = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
                                         <?php echo htmlspecialchars($request['employee_email']); ?>
                                     </a>
                                 </div>
-                                <?php if ($request['phone']): ?>
+                                <?php if (isset($request['phone']) && $request['phone']): ?>
                                 <div class="mb-3">
                                     <strong>Telefon:</strong><br>
                                     <?php echo htmlspecialchars($request['phone']); ?>
