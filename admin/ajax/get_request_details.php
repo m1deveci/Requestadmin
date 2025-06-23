@@ -116,34 +116,4 @@ try {
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'Database error occurred']);
 }
-
-function getPriorityBadgeColor($priority) {
-    switch ($priority) {
-        case 'low':
-            return 'success';
-        case 'medium':
-            return 'warning';
-        case 'high':
-            return 'danger';
-        case 'urgent':
-            return 'dark';
-        default:
-            return 'secondary';
-    }
-}
-
-function getPriorityText($priority) {
-    switch ($priority) {
-        case 'low':
-            return 'Düşük';
-        case 'medium':
-            return 'Orta';
-        case 'high':
-            return 'Yüksek';
-        case 'urgent':
-            return 'Acil';
-        default:
-            return 'Bilinmeyen';
-    }
-}
 ?>
