@@ -24,7 +24,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode,
     return <Navigate to="/" replace />
   }
 
-  const userRole = user.user_metadata?.role
+  const userRole = user.role
   if (!allowedRoles.includes(userRole)) {
     return <Navigate to="/" replace />
   }
@@ -45,7 +45,7 @@ function AppRoutes() {
 
   // Redirect authenticated users to their dashboard
   if (user) {
-    const role = user.user_metadata?.role
+    const role = user.role
     switch (role) {
       case 'admin':
         return <Navigate to="/admin" replace />

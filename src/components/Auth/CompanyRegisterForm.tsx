@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { supabase } from '../../lib/supabase'
+import { apiClient } from '../../lib/api'
 import { Building, Upload } from 'lucide-react'
 
 const registerSchema = z.object({
@@ -41,45 +41,26 @@ export function CompanyRegisterForm({ onSuccess }: CompanyRegisterFormProps) {
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true)
     try {
-      // Upload logo if provided
-      let logoUrl = null
-      if (logoFile) {
-        const fileExt = logoFile.name.split('.').pop()
-        const fileName = `${Math.random()}.${fileExt}`
-        const { error: uploadError } = await supabase.storage
-          .from('company-logos')
-          .upload(fileName, logoFile)
-        
-        if (!uploadError) {
-          logoUrl = fileName
-        }
-      }
+      // Register company via API
+      await apiClient.register({
+        companyName: data.company_name,
+        email: data.email,
+        phone: data.phone,
+        authorizedPerson: data.authorized_person,
+        taxNumber: data.tax_number,
+        address: data.address,
+        firstName: data.authorized_person.split(' ')[0] || 'Admin',
+        lastName: data.authorized_person.split(' ').slice(1).join(' ') || '',
+        password: data.password
+      })
 
-      // Insert company
-      const { error } = await supabase
-        .from('companies')
-        .insert({
-          company_name: data.company_name,
-          phone: data.phone,
-          authorized_person: data.authorized_person,
-          tax_number: data.tax_number,
-          address: data.address,
-          email: data.email,
-          logo: logoUrl,
-          status: 'pending'
-        })
-
-      if (error) {
-        if (error.code === '23505') {
-          setError('email', { message: 'Bu e-posta adresi zaten kullanılıyor' })
-        } else {
-          setError('root', { message: 'Kayıt sırasında bir hata oluştu' })
-        }
+      onSuccess?.()
+    } catch (error: any) {
+      if (error.message.includes('email')) {
+        setError('email', { message: 'Bu e-posta adresi zaten kullanılıyor' })
       } else {
-        onSuccess?.()
+        setError('root', { message: 'Kayıt sırasında bir hata oluştu' })
       }
-    } catch (error) {
-      setError('root', { message: 'Kayıt sırasında bir hata oluştu' })
     } finally {
       setIsLoading(false)
     }
@@ -88,8 +69,8 @@ export function CompanyRegisterForm({ onSuccess }: CompanyRegisterFormProps) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="space-y-2">
+          <label className="form-label">
             Firma Adı *
           </label>
           <input
@@ -98,12 +79,12 @@ export function CompanyRegisterForm({ onSuccess }: CompanyRegisterFormProps) {
             placeholder="Firma adınızı girin"
           />
           {errors.company_name && (
-            <p className="mt-1 text-sm text-red-600">{errors.company_name.message}</p>
+            <p className="mt-2 text-sm text-red-600 font-medium">{errors.company_name.message}</p>
           )}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="space-y-2">
+          <label className="form-label">
             Telefon *
           </label>
           <input
@@ -113,7 +94,7 @@ export function CompanyRegisterForm({ onSuccess }: CompanyRegisterFormProps) {
             placeholder="+90 212 555 0123"
           />
           {errors.phone && (
-            <p className="mt-1 text-sm text-red-600">{errors.phone.message}</p>
+            <p className="mt-2 text-sm text-red-600 font-medium">{errors.phone.message}</p>
           )}
         </div>
       </div>

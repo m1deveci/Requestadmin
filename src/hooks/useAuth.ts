@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
-import { User } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
+import { apiClient } from '../lib/api'
 
-export interface AuthUser extends User {
-  user_metadata: {
-    role?: string
-    company_id?: string
-    location_id?: string
-    province_id?: string
-    first_name?: string
-    last_name?: string
-  }
+export interface AuthUser {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  role: 'admin' | 'hr' | 'employee'
+  companyId: string
+  companyName?: string
+  title?: string
+  department?: string
+  status: 'active' | 'inactive'
 }
 
 export function useAuth() {
@@ -18,45 +19,68 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user as AuthUser || null)
+    // Check if user is already logged in
+    const token = localStorage.getItem('token')
+    if (token) {
+      // Verify token and get user info
+      apiClient.getMe()
+        .then((userData: unknown) => {
+          setUser(userData as AuthUser)
+          setLoading(false)
+        })
+        .catch(() => {
+          // Token is invalid, clear it
+          apiClient.clearToken()
+          setUser(null)
+          setLoading(false)
+        })
+    } else {
       setLoading(false)
-    })
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user as AuthUser || null)
-        setLoading(false)
-      }
-    )
-
-    return () => subscription.unsubscribe()
+    }
   }, [])
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    return { data, error }
+    try {
+      const response: any = await apiClient.login(email, password)
+      apiClient.setToken(response.token)
+      setUser(response.user)
+      return { data: response, error: null }
+    } catch (error) {
+      return { data: null, error: error as Error }
+    }
   }
 
-  const signUp = async (email: string, password: string, metadata: any) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: metadata
-      }
-    })
-    return { data, error }
+  const signUp = async (data: {
+    companyName: string
+    email: string
+    phone: string
+    authorizedPerson: string
+    taxNumber: string
+    address: string
+    firstName: string
+    lastName: string
+    password: string
+  }) => {
+    try {
+      const response = await apiClient.register(data)
+      return { data: response, error: null }
+    } catch (error) {
+      return { data: null, error: error as Error }
+    }
   }
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    return { error }
+    try {
+      await apiClient.logout()
+      apiClient.clearToken()
+      setUser(null)
+      return { error: null }
+    } catch (error) {
+      // Even if logout fails on server, clear local state
+      apiClient.clearToken()
+      setUser(null)
+      return { error: error as Error }
+    }
   }
 
   return {

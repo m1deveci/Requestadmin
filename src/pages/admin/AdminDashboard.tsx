@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Building, Users, ClipboardList, Clock } from 'lucide-react'
+import { Building, Users, ClipboardList, Clock, MapPin, Settings } from 'lucide-react'
 import { DashboardLayout } from '../../components/Layout/DashboardLayout'
 import { StatCard } from '../../components/UI/StatCard'
-import { supabase } from '../../lib/supabase'
+import { Link } from 'react-router-dom'
+import { apiClient } from '../../lib/api'
 
 interface DashboardStats {
   totalCompanies: number
@@ -28,29 +29,25 @@ export function AdminDashboard() {
 
   const loadDashboardData = async () => {
     try {
-      // Load statistics
-      const [companiesResult, usersResult, requestsResult] = await Promise.all([
-        supabase.from('companies').select('id, status'),
-        supabase.from('users').select('id'),
-        supabase.from('requests').select('id, status, created_at, title')
-      ])
-
-      const companies = companiesResult.data || []
-      const users = usersResult.data || []
-      const requests = requestsResult.data || []
+      // Load statistics from API
+      const [companies, users, requests] = await Promise.all([
+        apiClient.getCompanies(),
+        apiClient.getUsers(),
+        apiClient.getRequests()
+      ]) as [any[], any[], any[]]
 
       setStats({
         totalCompanies: companies.length,
-        pendingCompanies: companies.filter(c => c.status === 'pending').length,
+        pendingCompanies: companies.filter((c: any) => c.status === 'pending').length,
         totalUsers: users.length,
         totalRequests: requests.length,
-        pendingRequests: requests.filter(r => r.status === 'pending').length,
+        pendingRequests: requests.filter((r: any) => r.status === 'pending').length,
       })
 
       // Recent activities (last 10 requests)
       setRecentActivities(
         requests
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           .slice(0, 10)
       )
     } catch (error) {
@@ -62,59 +59,68 @@ export function AdminDashboard() {
     <DashboardLayout>
       <div className="space-y-8">
         {/* Page Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <nav className="flex mt-2" aria-label="Breadcrumb">
-            <ol className="flex items-center space-x-2">
-              <li className="text-gray-500">Dashboard</li>
-            </ol>
-          </nav>
+        <div className="page-header">
+          <h1 className="page-title">Admin Dashboard</h1>
+          <p className="page-subtitle">Sistem genelindeki aktiviteleri yönetin ve izleyin</p>
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="stats-grid">
           <StatCard
             title="Toplam Firma"
             value={stats.totalCompanies}
             icon={Building}
+            color="blue"
+            change={{ value: 12, type: 'increase' }}
           />
           <StatCard
             title="Bekleyen Firma"
             value={stats.pendingCompanies}
             icon={Clock}
-            gradient="from-orange-500 to-red-600"
+            color="orange"
+            change={{ value: 5, type: 'increase' }}
           />
           <StatCard
             title="Toplam Kullanıcı"
             value={stats.totalUsers}
             icon={Users}
-            gradient="from-cyan-500 to-blue-600"
+            color="green"
+            change={{ value: 8, type: 'increase' }}
           />
           <StatCard
             title="Toplam Talep"
             value={stats.totalRequests}
             icon={ClipboardList}
-            gradient="from-green-500 to-teal-600"
+            color="purple"
+            change={{ value: 3, type: 'decrease' }}
           />
         </div>
 
         {/* Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="content-grid">
           {/* Recent Activities */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Son Aktiviteler</h2>
+            <div className="modern-card p-6">
+              <h2 className="text-xl font-bold text-slate-900 mb-6">Son Aktiviteler</h2>
               {recentActivities.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">Henüz aktivite bulunmuyor.</p>
+                <div className="text-center py-12">
+                  <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-500 font-medium">Henüz aktivite bulunmuyor.</p>
+                </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {recentActivities.map((activity, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div key={index} className="flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors duration-200">
                       <div className="flex items-center">
-                        <ClipboardList className="w-5 h-5 text-blue-600 mr-3" />
-                        <span className="text-gray-900">{activity.title}</span>
+                        <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mr-4">
+                          <ClipboardList className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <span className="font-semibold text-slate-900">{activity.title}</span>
+                          <p className="text-sm text-slate-600">Talep oluşturuldu</p>
+                        </div>
                       </div>
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-slate-500 font-medium">
                         {new Date(activity.created_at).toLocaleDateString('tr-TR')}
                       </span>
                     </div>
@@ -126,25 +132,31 @@ export function AdminDashboard() {
 
           {/* Quick Actions */}
           <div>
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Hızlı İşlemler</h2>
+            <div className="modern-card p-6">
+              <h2 className="text-xl font-bold text-slate-900 mb-6">Hızlı İşlemler</h2>
               <div className="space-y-3">
                 <Link
                   to="/admin/companies?status=pending"
-                  className="block w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                  className="flex items-center p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all duration-200 group hover:scale-[1.02]"
                 >
-                  <div className="flex items-center">
-                    <Building className="w-5 h-5 text-blue-600 mr-3" />
-                    <span className="text-gray-900">Firma Onayları</span>
+                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center mr-4">
+                    <Building className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-900">Firma Onayları</span>
+                    <p className="text-sm text-slate-600">Bekleyen firma başvuruları</p>
                   </div>
                 </Link>
                 <Link
                   to="/admin/users?action=add"
-                  className="block w-full text-left p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                  className="flex items-center p-4 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all duration-200 group hover:scale-[1.02]"
                 >
-                  <div className="flex items-center">
-                    <Users className="w-5 h-5 text-green-600 mr-3" />
-                    <span className="text-gray-900">Kullanıcı Ekle</span>
+                  <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center mr-4">
+                    <Users className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-900">Kullanıcı Ekle</span>
+                    <p className="text-sm text-slate-600">Yeni kullanıcı oluştur</p>
                   </div>
                 </Link>
                 <Link

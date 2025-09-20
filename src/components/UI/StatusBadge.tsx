@@ -7,49 +7,53 @@ export function StatusBadge({ status, type = 'status' }: StatusBadgeProps) {
   const getStatusStyles = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'status-pending'
       case 'assigned':
-        return 'bg-blue-100 text-blue-800'
+        return 'status-in-progress'
       case 'in_progress':
-        return 'bg-purple-100 text-purple-800'
+        return 'status-in-progress'
       case 'completed':
-        return 'bg-green-100 text-green-800'
+        return 'status-approved'
       case 'cancelled':
-        return 'bg-red-100 text-red-800'
+        return 'status-rejected'
       case 'rejected':
-        return 'bg-red-100 text-red-800'
+        return 'status-rejected'
       case 'manager_approval':
-        return 'bg-gray-100 text-gray-800'
+        return 'status-pending'
       case 'approved':
-        return 'bg-green-100 text-green-800'
+        return 'status-approved'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-slate-100 text-slate-600'
     }
   }
 
   const getPriorityStyles = (priority: string) => {
     switch (priority) {
       case 'low':
-        return 'bg-green-100 text-green-800'
+        return 'priority-low'
       case 'medium':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'priority-medium'
       case 'high':
-        return 'bg-red-100 text-red-800'
+        return 'priority-high'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-slate-100 text-slate-600'
     }
   }
 
   const getRoleStyles = (role: string) => {
     switch (role) {
       case 'admin':
-        return 'bg-red-100 text-red-800'
+        return 'bg-red-50 text-red-700 border border-red-200'
       case 'hr':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'bg-amber-50 text-amber-700 border border-amber-200'
       case 'employee':
-        return 'bg-blue-100 text-blue-800'
+        return 'bg-blue-50 text-blue-700 border border-blue-200'
+      case 'active':
+        return 'status-approved'
+      case 'inactive':
+        return 'status-rejected'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-slate-100 text-slate-600'
     }
   }
 
@@ -85,7 +89,7 @@ export function StatusBadge({ status, type = 'status' }: StatusBadgeProps) {
   }
 
   return (
-    <span className={`status-badge ${styles}`}>
+    <span className={`status-badge ${styles} scale-in`}>
       {getStatusText(status)}
     </span>
   )

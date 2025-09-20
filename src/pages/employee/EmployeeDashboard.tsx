@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { DashboardLayout } from '../../components/Layout/DashboardLayout'
 import { StatCard } from '../../components/UI/StatCard'
 import { StatusBadge } from '../../components/UI/StatusBadge'
-import { supabase } from '../../lib/supabase'
+import { apiClient } from '../../lib/api'
 import { useAuth } from '../../hooks/useAuth'
 
 export function EmployeeDashboard() {
@@ -16,54 +16,28 @@ export function EmployeeDashboard() {
     completed: 0,
   })
   const [recentRequests, setRecentRequests] = useState<any[]>([])
-  const [categories, setCategories] = useState<any[]>([])
 
   useEffect(() => {
     if (user) {
       loadDashboardData()
-      loadCategories()
     }
   }, [user])
 
   const loadDashboardData = async () => {
     try {
-      const { data: requests } = await supabase
-        .from('requests')
-        .select(`
-          *,
-          request_categories(category_name),
-          assigned_user:users!requests_assigned_to_fkey(first_name, last_name)
-        `)
-        .eq('employee_id', user?.id)
-        .order('created_at', { ascending: false })
-        .limit(10)
+      const requests = await apiClient.getMyRequests() as any[]
 
       if (requests) {
         setStats({
           total: requests.length,
-          pending: requests.filter(r => r.status === 'pending').length,
-          inProgress: requests.filter(r => ['assigned', 'in_progress'].includes(r.status)).length,
-          completed: requests.filter(r => r.status === 'completed').length,
+          pending: requests.filter((r: any) => r.status === 'pending').length,
+          inProgress: requests.filter((r: any) => ['assigned', 'in_progress'].includes(r.status)).length,
+          completed: requests.filter((r: any) => r.status === 'completed').length,
         })
         setRecentRequests(requests)
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error)
-    }
-  }
-
-  const loadCategories = async () => {
-    try {
-      const { data } = await supabase
-        .from('request_categories')
-        .select('*')
-        .order('category_name')
-
-      if (data) {
-        setCategories(data)
-      }
-    } catch (error) {
-      console.error('Error loading categories:', error)
     }
   }
 
@@ -91,19 +65,19 @@ export function EmployeeDashboard() {
             title="Beklemede"
             value={stats.pending}
             icon={Clock}
-            gradient="from-orange-500 to-red-600"
+            color="orange"
           />
           <StatCard
             title="İşlemde"
             value={stats.inProgress}
             icon={Cog}
-            gradient="from-cyan-500 to-blue-600"
+            color="blue"
           />
           <StatCard
             title="Tamamlanan"
             value={stats.completed}
             icon={CheckCircle}
-            gradient="from-green-500 to-teal-600"
+            color="green"
           />
         </div>
 

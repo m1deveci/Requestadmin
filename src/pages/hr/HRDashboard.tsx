@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { ClipboardList, Clock, UserCheck, CheckCircle } from 'lucide-react'
+import { ClipboardList, Clock, UserCheck, CheckCircle, Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { DashboardLayout } from '../../components/Layout/DashboardLayout'
 import { StatCard } from '../../components/UI/StatCard'
 import { StatusBadge } from '../../components/UI/StatusBadge'
-import { supabase } from '../../lib/supabase'
+import { apiClient } from '../../lib/api'
 import { useAuth } from '../../hooks/useAuth'
 
 export function HRDashboard() {
@@ -25,27 +25,18 @@ export function HRDashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const provinceId = user?.user_metadata?.province_id
+      const provinceId = user?.id
 
-      const { data: requests } = await supabase
-        .from('requests')
-        .select(`
-          *,
-          employee:users!requests_employee_id_fkey(first_name, last_name, province_id),
-          request_categories(category_name)
-        `)
-        .eq('employee.province_id', provinceId)
-        .order('created_at', { ascending: false })
-        .limit(10)
+      const requests = await apiClient.getRequests() as any[]
 
       if (requests) {
-        const filteredRequests = requests.filter(r => r.employee?.province_id === provinceId)
+        const filteredRequests = requests.filter((r: any) => r.employee?.province_id === provinceId)
         
         setStats({
           total: filteredRequests.length,
-          pending: filteredRequests.filter(r => r.status === 'pending').length,
-          assigned: filteredRequests.filter(r => r.assigned_to === user?.id).length,
-          completed: filteredRequests.filter(r => r.status === 'completed').length,
+          pending: filteredRequests.filter((r: any) => r.status === 'pending').length,
+          assigned: filteredRequests.filter((r: any) => r.assigned_to === user?.id).length,
+          completed: filteredRequests.filter((r: any) => r.status === 'completed').length,
         })
         setRecentRequests(filteredRequests)
       }
@@ -78,19 +69,19 @@ export function HRDashboard() {
             title="Bekleyen Talep"
             value={stats.pending}
             icon={Clock}
-            gradient="from-orange-500 to-red-600"
+            color="orange"
           />
           <StatCard
             title="Bana Atanan"
             value={stats.assigned}
             icon={UserCheck}
-            gradient="from-cyan-500 to-blue-600"
+            color="blue"
           />
           <StatCard
             title="Tamamlanan"
             value={stats.completed}
             icon={CheckCircle}
-            gradient="from-green-500 to-teal-600"
+            color="green"
           />
         </div>
 

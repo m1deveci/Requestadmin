@@ -49,9 +49,9 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-          E-posta
+      <div className="space-y-2">
+        <label htmlFor="email" className="form-label">
+          E-posta Adresi
         </label>
         <input
           {...register('email')}
@@ -60,12 +60,12 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           placeholder="ornek@firma.com"
         />
         {errors.email && (
-          <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+          <p className="mt-2 text-sm text-red-600 font-medium">{errors.email.message}</p>
         )}
       </div>
 
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+      <div className="space-y-2">
+        <label htmlFor="password" className="form-label">
           Parola
         </label>
         <div className="relative">
@@ -77,31 +77,31 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           />
           <button
             type="button"
-            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+            className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
             onClick={() => setShowPassword(!showPassword)}
           >
             {showPassword ? (
-              <EyeOff className="h-5 w-5 text-gray-400" />
+              <EyeOff className="h-5 w-5" />
             ) : (
-              <Eye className="h-5 w-5 text-gray-400" />
+              <Eye className="h-5 w-5" />
             )}
           </button>
         </div>
         {errors.password && (
-          <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+          <p className="mt-2 text-sm text-red-600 font-medium">{errors.password.message}</p>
         )}
       </div>
 
       {errors.root && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-          <p className="text-sm text-red-600">{errors.root.message}</p>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 slide-up">
+          <p className="text-sm text-red-700 font-medium">{errors.root.message}</p>
         </div>
       )}
 
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full btn-primary flex items-center justify-center"
+        className="w-full btn-primary h-12 text-base font-semibold"
       >
         {isLoading ? (
           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>

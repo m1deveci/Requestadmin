@@ -45,8 +45,8 @@ export function Sidebar() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   
-  const userRole = user?.user_metadata?.role || 'employee'
-  const userName = `${user?.user_metadata?.first_name || ''} ${user?.user_metadata?.last_name || ''}`.trim()
+  const userRole = user?.role || 'employee'
+  const userName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
   
   const navItems = navigation[userRole as keyof typeof navigation] || navigation.employee
 
@@ -65,14 +65,21 @@ export function Sidebar() {
   }
 
   return (
-    <div className="w-64 bg-gradient-to-b from-gray-800 to-gray-900 text-white min-h-screen">
-      <div className="p-6">
-        <div className="text-center mb-8">
+    <div className="w-72 sidebar min-h-screen">
+      {/* Header */}
+      <div className="sidebar-header p-6">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+            <LayoutDashboard className="w-8 h-8" />
+          </div>
           <h2 className="text-xl font-bold">{getRoleTitle(userRole)}</h2>
-          <p className="text-gray-300 text-sm mt-1">{userName || 'Kullanıcı'}</p>
+          <p className="text-blue-100 text-sm mt-1 font-medium">{userName || 'Kullanıcı'}</p>
         </div>
-        
-        <nav className="space-y-2">
+      </div>
+
+      {/* Navigation */}
+      <div className="p-4">
+        <nav className="space-y-1">
           {navItems.map((item) => (
             <NavLink
               key={item.name}
@@ -81,19 +88,28 @@ export function Sidebar() {
                 `sidebar-link ${isActive ? 'active' : ''}`
               }
             >
-              <item.icon className="w-5 h-5 mr-3" />
-              {item.name}
+              <div className="flex items-center">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center mr-3 group-hover:bg-slate-200 transition-colors">
+                  <item.icon className="w-5 h-5 text-slate-600" />
+                </div>
+                <span className="font-medium">{item.name}</span>
+              </div>
             </NavLink>
           ))}
-          
+        </nav>
+
+        {/* Logout Button */}
+        <div className="mt-8 pt-4 border-t border-slate-200">
           <button
             onClick={handleSignOut}
-            className="sidebar-link w-full text-left mt-8 text-red-300 hover:text-red-200"
+            className="w-full flex items-center px-4 py-3 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all duration-200 font-medium"
           >
-            <LogOut className="w-5 h-5 mr-3" />
-            Çıkış
+            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mr-3">
+              <LogOut className="w-5 h-5" />
+            </div>
+            <span>Çıkış Yap</span>
           </button>
-        </nav>
+        </div>
       </div>
     </div>
   )
